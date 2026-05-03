@@ -7,7 +7,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ServiceCategory extends Model
 {
+    use \App\Traits\HasTranslations;
+
     protected $fillable = ['name', 'description'];
+
+    protected $translatable = ['name', 'description'];
 
     public function serviceRequests(): HasMany
     {

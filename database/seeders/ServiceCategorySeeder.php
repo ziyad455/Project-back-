@@ -19,6 +19,7 @@ class ServiceCategorySeeder extends Seeder
             ['name' => 'Rédaction & Traduction', 'description' => 'Articles, correction, traduction.'],
             ['name' => 'Assistance Administrative', 'description' => 'Saisie de données, gestion d\'emails.'],
             ['name' => 'Cours de Soutien', 'description' => 'Maths, Langues, Programmation.'],
+            ['name' => 'Réparation d\'ordinateurs', 'description' => 'Maintenance et réparation de matériel informatique.'],
         ];
 
         foreach ($categories as $category) {
