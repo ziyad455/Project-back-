@@ -21,9 +21,23 @@ return new class extends Migration
             $table->string('whatsapp_number')->nullable();
             $table->string('city')->nullable();
             $table->enum('role', ['client', 'provider'])->default('client');
+            
+            // Talent specific fields
             $table->boolean('is_verified_student')->default(false);
+            $table->string('university')->nullable();
+            $table->string('field_of_study')->nullable();
+            $table->string('title')->nullable(); // e.g., 'Full Stack Developer'
+            $table->text('bio')->nullable();
+            $table->string('portfolio_url')->nullable();
+            $table->json('skills')->nullable(); // Store array of skills
+            $table->decimal('hourly_rate', 8, 2)->nullable();
+            
+            // Stats
+            $table->integer('completed_jobs')->default(0);
+            $table->decimal('job_success_rate', 5, 2)->nullable(); // e.g., 98.50
             $table->integer('total_votes')->default(0);
             $table->decimal('average_rating', 3, 2)->default(0);
+            
             $table->rememberToken();
             $table->timestamps();
         });

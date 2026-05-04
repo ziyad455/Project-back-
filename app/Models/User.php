@@ -28,6 +28,17 @@ class User extends Authenticatable
         'city',
         'role',
         'is_verified_student',
+        'university',
+        'field_of_study',
+        'title',
+        'bio',
+        'portfolio_url',
+        'skills',
+        'hourly_rate',
+        'completed_jobs',
+        'job_success_rate',
+        'total_votes',
+        'average_rating',
     ];
 
     /**
@@ -50,6 +61,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'skills' => 'array',
         ];
     }
 
