@@ -30,4 +30,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Reviews
     Route::post('/requests/{serviceRequest}/reviews', [ReviewController::class, 'store']);
+
+    // Notifications
+    Route::get('/notifications', fn() => response()->json(auth()->user()->notifications));
+    Route::post('/notifications/{id}/read', fn($id) => tap(auth()->user()->notifications()->findOrFail($id))->markAsRead());
+    Route::post('/notifications/read-all', fn() => tap(auth()->user()->unreadNotifications->markAsRead()));
 });

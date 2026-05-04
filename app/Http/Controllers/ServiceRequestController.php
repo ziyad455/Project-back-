@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\NotifyRemainingProviders;
 use App\Models\ServiceRequest;
+use App\Models\User;
+use App\Notifications\NewServiceRequestNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -28,19 +31,46 @@ class ServiceRequestController extends Controller
 
     /**
      * Store a new service request (Client only).
+     * Implements the tiered notification system:
+     *   - Tier 1: Top 10 providers in city (by rating) are notified immediately
+     *   - Tier 2: Remaining providers are notified after 30 minutes if request still pending
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'city' => 'required|string',
+            'city'                => 'required|string',
             'service_category_id' => 'required|exists:service_categories,id',
-            'description' => 'required|string',
-            'proposed_price' => 'required|numeric|min:0',
+            'description'         => 'required|string',
+            'proposed_price'      => 'required|numeric|min:0',
         ]);
 
         $serviceRequest = Auth::user()->serviceRequests()->create($validated);
+        $serviceRequest->load('category', 'client');
 
-        return response()->json($serviceRequest->load('category'), 201);
+        // ── Tiered Notification Logic ──────────────────────────────────────────
+        // Get all verified providers in the same city, sorted by rating DESC
+        $providers = User::where('role', 'provider')
+            ->where('is_verified_student', true)
+            ->where('city', $serviceRequest->city)
+            ->orderByDesc('average_rating')
+            ->orderByDesc('total_votes')
+            ->get();
+
+        // Tier 1: Top 10 — notified immediately
+        $tier1 = $providers->take(10);
+        foreach ($tier1 as $provider) {
+            $provider->notify(new NewServiceRequestNotification($serviceRequest, 'top'));
+        }
+
+        // Tier 2: The rest — notified after 30 minutes if request still pending
+        $tier1Ids = $tier1->pluck('id')->toArray();
+        if ($providers->count() > 10) {
+            NotifyRemainingProviders::dispatch($serviceRequest, $tier1Ids)
+                ->delay(now()->addMinutes(30));
+        }
+        // ──────────────────────────────────────────────────────────────────────
+
+        return response()->json($serviceRequest, 201);
     }
 
     /**
