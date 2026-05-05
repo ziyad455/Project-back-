@@ -62,11 +62,11 @@ class ServiceRequestController extends Controller
             $provider->notify(new NewServiceRequestNotification($serviceRequest, 'top'));
         }
 
-        // Tier 2: The rest — notified after 30 minutes if request still pending
+        // Tier 2: The rest — notified after 5 minutes if request still pending
         $tier1Ids = $tier1->pluck('id')->toArray();
         if ($providers->count() > 10) {
             NotifyRemainingProviders::dispatch($serviceRequest, $tier1Ids)
-                ->delay(now()->addMinutes(30));
+                ->delay(now()->addMinutes(5));
         }
         // ──────────────────────────────────────────────────────────────────────
 
