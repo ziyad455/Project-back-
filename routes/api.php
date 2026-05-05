@@ -47,4 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', fn() => response()->json(auth()->user()->notifications));
     Route::post('/notifications/read-all', fn() => tap(auth()->user()->unreadNotifications->markAsRead()));
     Route::post('/notifications/{id}/read', fn($id) => tap(auth()->user()->notifications()->findOrFail($id)->markAsRead()));
+    // Review Routes
+    Route::post('/requests/{serviceRequest}/review', [App\Http\Controllers\ReviewController::class, 'store']);
+    Route::get('/providers/{providerId}/reviews', [App\Http\Controllers\ReviewController::class, 'index']);
 });

@@ -4,53 +4,84 @@ namespace App\Http\Controllers;
 
 use App\Models\Review;
 use App\Models\ServiceRequest;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ReviewController extends Controller
 {
     /**
-     * Client leaves a review for a provider after a completed service.
+     * Submit a review for a provider.
      */
     public function store(Request $request, ServiceRequest $serviceRequest)
     {
-        if (Auth::id() !== $serviceRequest->client_id) {
-            return response()->json(['message' => 'Only the client can leave a review'], 403);
+        // Only the client of the request can leave a review
+        if ($serviceRequest->client_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if ($serviceRequest->status !== 'completed') {
-            return response()->json(['message' => 'Reviews can only be left for completed requests'], 400);
+        // Only completed or provider_selected requests can be reviewed
+        if (!in_array($serviceRequest->status, ['completed', 'provider_selected'])) {
+            return response()->json(['message' => 'This request cannot be reviewed yet'], 400);
         }
 
-        if (!$serviceRequest->selected_provider_id) {
-            return response()->json(['message' => 'No provider was selected for this request'], 400);
+        $providerId = $serviceRequest->selected_provider_id;
+        if (!$providerId) {
+            return response()->json(['message' => 'No provider associated with this request'], 400);
         }
 
         $validated = $request->validate([
-            'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string',
+            'rating'  => 'required|integer|min:1|max:5',
+            'comment' => 'nullable|string|max:500',
         ]);
 
-        $review = Review::updateOrCreate(
-            ['service_request_id' => $serviceRequest->id],
-            [
-                'reviewer_id' => Auth::id(),
-                'provider_id' => $serviceRequest->selected_provider_id,
-                'rating' => $validated['rating'],
-                'comment' => $validated['comment'],
-            ]
-        );
+        return DB::transaction(function () use ($validated, $serviceRequest, $providerId) {
+            // Create the review
+            $review = Review::create([
+                'service_request_id' => $serviceRequest->id,
+                'client_id'          => Auth::id(),
+                'provider_id'        => $providerId,
+                'rating'             => $validated['rating'],
+                'comment'            => $validated['comment'],
+            ]);
 
-        // Update provider rating (this is a simplified version)
-        $provider = $serviceRequest->selectedProvider;
-        $avg = Review::where('provider_id', $provider->id)->avg('rating');
-        $count = Review::where('provider_id', $provider->id)->count();
-        
-        $provider->update([
-            'average_rating' => $avg,
-            'total_votes' => $count
-        ]);
+            // Mark request as completed if it wasn't already
+            $serviceRequest->update(['status' => 'completed']);
 
-        return response()->json($review, 201);
+            // Update Provider stats
+            $provider = User::find($providerId);
+            $stats = Review::where('provider_id', $providerId)
+                ->selectRaw('COUNT(*) as total_votes, AVG(rating) as average_rating')
+                ->first();
+
+            $provider->update([
+                'total_votes'    => $stats->total_votes,
+                'average_rating' => round($stats->average_rating, 1),
+                'completed_jobs' => $provider->completed_jobs + 1
+            ]);
+
+            return response()->json([
+                'message' => 'Merci pour votre avis !',
+                'review'  => $review,
+                'provider_stats' => [
+                    'rating' => $provider->average_rating,
+                    'votes'  => $provider->total_votes
+                ]
+            ]);
+        });
+    }
+
+    /**
+     * Get reviews for a specific provider.
+     */
+    public function index($providerId)
+    {
+        $reviews = Review::where('provider_id', $providerId)
+            ->with('client:id,first_name,last_name')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json($reviews);
     }
 }
