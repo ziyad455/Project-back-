@@ -19,7 +19,7 @@ class UserController extends Controller
                 'id', 'first_name', 'last_name', 'title', 'city',
                 'bio', 'skills', 'hourly_rate', 'average_rating',
                 'total_votes', 'completed_jobs', 'job_success_rate',
-                'portfolio_url', 'university', 'field_of_study',
+                'portfolio_url', 'university', 'field_of_study', 'whatsapp_number'
             ])
             ->orderByDesc('average_rating')
             ->orderByDesc('total_votes');
@@ -29,7 +29,6 @@ class UserController extends Controller
         }
 
         if ($request->has('category')) {
-            // Filter by skills JSON contains value
             $query->whereJsonContains('skills', $request->category);
         }
 
@@ -58,7 +57,7 @@ class UserController extends Controller
                 'id', 'first_name', 'last_name', 'title', 'city',
                 'bio', 'skills', 'hourly_rate', 'average_rating',
                 'total_votes', 'completed_jobs', 'job_success_rate',
-                'portfolio_url', 'university', 'field_of_study',
+                'portfolio_url', 'university', 'field_of_study', 'whatsapp_number'
             ])
             ->firstOrFail();
 
