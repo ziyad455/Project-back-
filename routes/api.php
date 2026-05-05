@@ -50,4 +50,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Review Routes
     Route::post('/requests/{serviceRequest}/review', [App\Http\Controllers\ReviewController::class, 'store']);
     Route::get('/providers/{providerId}/reviews', [App\Http\Controllers\ReviewController::class, 'index']);
+
+    // Document Verification Route
+    Route::post('/verification/upload', [App\Http\Controllers\VerificationController::class, 'uploadDocuments']);
+
+    // Admin Routes (Protected by checking is_admin on the user)
+    Route::prefix('admin')->group(function () {
+        Route::get('/pending-providers', [App\Http\Controllers\AdminController::class, 'pendingProviders']);
+        Route::post('/verify-provider/{id}', [App\Http\Controllers\AdminController::class, 'verifyProvider']);
+        Route::post('/reject-provider/{id}', [App\Http\Controllers\AdminController::class, 'rejectProvider']);
+    });
 });

@@ -29,6 +29,17 @@ class DatabaseSeeder extends Seeder
             'whatsapp_number'    => '0600000001',
         ]);
 
+        // Demo Admin
+        User::create([
+            'first_name'         => 'Admin',
+            'last_name'          => 'AjiKhdam',
+            'email'              => 'admin@ajikhdam.com',
+            'password'           => Hash::make('password'),
+            'role'               => 'client',
+            'is_admin'           => true,
+            'city'               => 'Casablanca',
+        ]);
+
         // Demo Providers with varying ratings (for tiered distribution testing)
         $providers = [
             [

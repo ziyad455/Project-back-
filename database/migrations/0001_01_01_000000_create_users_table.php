@@ -21,9 +21,12 @@ return new class extends Migration
             $table->string('whatsapp_number')->nullable();
             $table->string('city')->nullable();
             $table->enum('role', ['client', 'provider'])->default('client');
+            $table->boolean('is_admin')->default(false);
             
             // Talent specific fields
             $table->boolean('is_verified_student')->default(false);
+            $table->string('document_id_card')->nullable();
+            $table->string('document_student_proof')->nullable();
             $table->string('university')->nullable();
             $table->string('field_of_study')->nullable();
             $table->string('title')->nullable(); // e.g., 'Full Stack Developer'
