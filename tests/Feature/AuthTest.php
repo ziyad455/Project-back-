@@ -18,6 +18,7 @@ class AuthTest extends TestCase
             'last_name' => 'Doe',
             'email' => 'john@example.com',
             'password' => 'password',
+            'password_confirmation' => 'password',
             'whatsapp_number' => '0600000000',
             'city' => 'Marrakech',
             'role' => 'client',
@@ -25,9 +26,12 @@ class AuthTest extends TestCase
 
         $response->assertStatus(201)
                  ->assertJsonStructure([
-                     'user' => ['id', 'first_name', 'last_name', 'email', 'role'],
-                     'access_token',
-                     'token_type'
+                     'message',
+                     'data' => [
+                         'user' => ['id', 'first_name', 'last_name', 'email', 'role'],
+                         'access_token',
+                         'token_type',
+                     ],
                  ]);
 
         $this->assertDatabaseHas('users', [
@@ -50,9 +54,12 @@ class AuthTest extends TestCase
 
         $response->assertStatus(200)
                  ->assertJsonStructure([
-                     'user',
-                     'access_token',
-                     'token_type'
+                     'message',
+                     'data' => [
+                         'user',
+                         'access_token',
+                         'token_type',
+                     ],
                  ]);
     }
 
@@ -66,7 +73,10 @@ class AuthTest extends TestCase
         ])->postJson('/api/logout');
 
         $response->assertStatus(200)
-                 ->assertJson(['message' => 'Déconnexion réussie']);
+                 ->assertJson([
+                     'message' => 'Déconnexion réussie',
+                     'data' => [],
+                 ]);
 
         $this->assertCount(0, $user->tokens);
     }
