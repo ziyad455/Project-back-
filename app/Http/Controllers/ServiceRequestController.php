@@ -123,16 +123,50 @@ class ServiceRequestController extends Controller
             'description'  => 'required|string',
             'budget'       => 'required|numeric|min:0',
             'city'         => 'required|string',
+            'deadline'     => 'nullable|date|after_or_equal:today',
         ]);
 
-        $serviceRequest = ServiceRequest::create($validated + [
-            'status' => 'open',
+        // 1. User Logic: Find or Create
+        $user = User::where('email', $validated['client_email'])->first();
+
+        if (!$user) {
+            // Split name into first/last name
+            $nameParts = explode(' ', $validated['client_name'], 2);
+            $firstName = $nameParts[0];
+            $lastName = isset($nameParts[1]) ? $nameParts[1] : '';
+
+            $user = User::create([
+                'first_name' => $firstName,
+                'last_name'  => $lastName,
+                'email'      => $validated['client_email'],
+                'password'   => bcrypt(str()->random(16)),
+                'role'       => 'client',
+                'whatsapp_number' => $validated['client_phone'],
+                'city'       => $validated['city'],
+            ]);
+        }
+
+        // 2. Create Mission
+        $serviceRequest = ServiceRequest::create([
+            'client_id'           => $user->id,
+            'user_id'             => $user->id, // keeping both for compatibility
+            'client_name'         => $validated['client_name'],
+            'client_email'        => $validated['client_email'],
+            'client_phone'        => $validated['client_phone'],
+            'title'               => $validated['title'],
+            'service_category_id' => $validated['category_id'],
+            'category_id'         => $validated['category_id'],
+            'description'         => $validated['description'],
+            'budget'              => $validated['budget'],
+            'city'                => $validated['city'],
+            'deadline'            => $validated['deadline'],
+            'status'              => 'open',
         ]);
 
         $serviceRequest->load('category');
 
         // ── Tiered Notification Logic by Category ──────────────────────────
-        // Get all verified providers in this category, sorted by rating DESC
+        // Get all verified providers in this category
         $providers = User::where('role', 'provider')
             ->where('is_verified_student', true)
             ->whereHas('categories', function($q) use ($serviceRequest) {

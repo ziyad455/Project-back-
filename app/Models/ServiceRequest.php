@@ -24,6 +24,7 @@ class ServiceRequest extends Model
         'city',
         'status',
         'selected_provider_id',
+        'deadline',
     ];
 
     public function user(): BelongsTo
