@@ -18,7 +18,7 @@ final class AuthService
     {
         [$firstName, $lastName] = $this->resolveNames($data);
 
-        return User::create([
+        $user = User::create([
             'first_name' => $firstName,
             'last_name' => $lastName,
             'email' => $data['email'],
@@ -26,7 +26,18 @@ final class AuthService
             'whatsapp_number' => $data['whatsapp_number'] ?? null,
             'city' => $data['city'] ?? null,
             'role' => $data['role'],
+            'bio' => $data['bio'] ?? null,
+            'hourly_rate' => $data['hourly_rate'] ?? null,
+            'university' => $data['university'] ?? null,
+            'field_of_study' => $data['field_of_study'] ?? null,
+            'portfolio_url' => $data['portfolio_url'] ?? null,
         ]);
+
+        if (!empty($data['skills'])) {
+            $user->categories()->sync($data['skills']);
+        }
+
+        return $user;
     }
 
     /**

@@ -89,4 +89,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Review::class, 'reviewer_id');
     }
+
+    public function categories()
+    {
+        return $this->belongsToMany(ServiceCategory::class, 'provider_services', 'user_id', 'service_category_id');
+    }
 }

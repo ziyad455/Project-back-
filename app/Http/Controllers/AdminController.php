@@ -8,21 +8,17 @@ use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware(function ($request, $next) {
-            if (!$request->user() || !$request->user()->is_admin) {
-                return response()->json(['message' => 'Unauthorized. Admin access required.'], 403);
-            }
-            return $next($request);
-        });
-    }
+
 
     /**
      * Get a list of providers awaiting verification.
      */
     public function pendingProviders()
     {
+        if (!auth()->user()->is_admin) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $providers = User::where('role', 'provider')
             ->where('is_verified_student', false)
             ->where(function($q) {
@@ -46,6 +42,10 @@ class AdminController extends Controller
      */
     public function verifyProvider($id)
     {
+        if (!auth()->user()->is_admin) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $provider = User::where('role', 'provider')->findOrFail($id);
         
         $provider->is_verified_student = true;
@@ -63,6 +63,10 @@ class AdminController extends Controller
      */
     public function rejectProvider($id)
     {
+        if (!auth()->user()->is_admin) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $provider = User::where('role', 'provider')->findOrFail($id);
         
         // Delete documents from storage
