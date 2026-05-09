@@ -53,7 +53,7 @@ final class AuthController extends Controller
     public function user(Request $request): JsonResponse
     {
         return ApiResponse::success([
-            'user' => $request->user(),
+            'user' => $request->user()->load('categories'),
         ], 'Utilisateur authentifié');
     }
 
@@ -66,7 +66,7 @@ final class AuthController extends Controller
         }
 
         return ApiResponse::success([
-            'user' => $user,
+            'user' => $user->load('categories'),
             'access_token' => $this->authService->issueToken($user),
             'token_type' => 'Bearer',
         ], $message, $status);

@@ -9,6 +9,43 @@ use Illuminate\Support\Facades\Auth;
 class UserController extends Controller
 {
     /**
+     * List users with filters (role, verification status).
+     */
+    public function index(Request $request)
+    {
+        $query = User::query();
+
+        if ($request->has('role')) {
+            $query->where('role', $request->role);
+        }
+
+        if ($request->has('is_verified')) {
+            // Mapping is_verified to is_verified_student for providers
+            $query->where('is_verified_student', $request->is_verified == '1');
+        }
+
+        // Search logic similar to providers method
+        if ($request->has('search')) {
+            $term = '%' . $request->search . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('first_name', 'like', $term)
+                  ->orWhere('last_name', 'like', $term)
+                  ->orWhere('title', 'like', $term)
+                  ->orWhere('bio', 'like', $term);
+            });
+        }
+
+        $users = $query->select([
+                'id', 'first_name', 'last_name', 'title', 'city', 'avatar',
+                'bio', 'skills', 'average_rating', 'total_votes'
+            ])
+            ->orderByDesc('average_rating')
+            ->get();
+
+        return response()->json($users);
+    }
+
+    /**
      * List all verified providers (for the Talents discovery page).
      */
     public function providers(Request $request)

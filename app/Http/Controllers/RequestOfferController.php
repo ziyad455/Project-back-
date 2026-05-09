@@ -18,7 +18,11 @@ class RequestOfferController extends Controller
             return response()->json(['message' => 'Only providers can place offers'], 403);
         }
 
-        if ($serviceRequest->status !== 'pending') {
+        if (!Auth::user()->is_verified_student) {
+            return response()->json(['message' => 'Your account must be verified to place offers'], 403);
+        }
+
+        if ($serviceRequest->status !== 'pending' && $serviceRequest->status !== 'open') {
             return response()->json(['message' => 'This request is no longer accepting offers'], 400);
         }
 

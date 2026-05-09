@@ -16,14 +16,18 @@ class ServiceRequestController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ServiceRequest::where('status', 'pending')->with('category', 'client');
+        $query = ServiceRequest::whereIn('status', ['pending', 'open'])->with('category', 'client');
 
         if ($request->has('city')) {
             $query->where('city', $request->city);
         }
 
-        if ($request->has('service_category_id')) {
-            $query->where('service_category_id', $request->service_category_id);
+        if ($request->has('category_id')) {
+            $ids = explode(',', $request->category_id);
+            $query->where(function($q) use ($ids) {
+                $q->whereIn('service_category_id', $ids)
+                  ->orWhereIn('category_id', $ids);
+            });
         }
 
         return response()->json($query->latest()->get());
