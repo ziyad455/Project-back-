@@ -29,14 +29,17 @@ class NotifyRemainingProviders implements ShouldQueue
      */
     public function handle(): void
     {
-        // If the request is already accepted (no longer pending), skip
-        if ($this->serviceRequest->status !== 'pending') {
+        // If the request is already accepted (no longer pending/open), skip
+        if ($this->serviceRequest->status !== 'open' && $this->serviceRequest->status !== 'pending') {
             return;
         }
 
         $remainingProviders = User::where('role', 'provider')
             ->where('is_verified_student', true)
-            ->where('city', $this->serviceRequest->city)
+            ->where(function($q) {
+                $q->where('field_of_study', $this->serviceRequest->category_id)
+                  ->orWhere('field_of_study', $this->serviceRequest->service_category_id);
+            })
             ->whereNotIn('id', $this->excludedProviderIds)
             ->get();
 

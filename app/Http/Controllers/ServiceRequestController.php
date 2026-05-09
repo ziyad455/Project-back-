@@ -104,4 +104,57 @@ class ServiceRequestController extends Controller
 
         return response()->json(['message' => 'Request marked as completed', 'request' => $serviceRequest]);
     }
+
+    /**
+     * Store a mission posted by anyone (public).
+     */
+    public function storePublic(Request $request)
+    {
+        $validated = $request->validate([
+            'client_name'  => 'required|string',
+            'client_email' => 'required|email',
+            'client_phone' => 'required|string',
+            'title'        => 'required|string',
+            'category_id'  => 'required|exists:service_categories,id',
+            'description'  => 'required|string',
+            'budget'       => 'required|numeric|min:0',
+            'city'         => 'required|string',
+        ]);
+
+        $serviceRequest = ServiceRequest::create($validated + [
+            'status' => 'open',
+        ]);
+
+        $serviceRequest->load('category');
+
+        // ── Tiered Notification Logic by Category ──────────────────────────
+        // Get all verified providers in this category, sorted by rating DESC
+        $providers = User::where('role', 'provider')
+            ->where('is_verified_student', true)
+            ->whereHas('categories', function($q) use ($serviceRequest) {
+                $q->where('service_categories.id', $serviceRequest->category_id);
+            })
+            ->orderByDesc('average_rating')
+            ->orderByDesc('total_votes')
+            ->get();
+
+        // Tier 1: Top 10 — notified immediately
+        $tier1 = $providers->take(10);
+        foreach ($tier1 as $provider) {
+            $provider->notify(new NewServiceRequestNotification($serviceRequest, 'top'));
+        }
+
+        // Tier 2: The rest — notified after 5 minutes
+        $tier1Ids = $tier1->pluck('id')->toArray();
+        if ($providers->count() > 10) {
+            NotifyRemainingProviders::dispatch($serviceRequest, $tier1Ids)
+                ->delay(now()->addMinutes(5));
+        }
+        // ──────────────────────────────────────────────────────────────────
+
+        return response()->json([
+            'message' => 'Mission postée avec succès !',
+            'request' => $serviceRequest
+        ], 201);
+    }
 }

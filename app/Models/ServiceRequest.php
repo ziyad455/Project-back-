@@ -10,14 +10,26 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class ServiceRequest extends Model
 {
     protected $fillable = [
-        'client_id',
-        'city',
-        'service_category_id',
+        'user_id',
+        'client_id', // keeping for compatibility
+        'client_name',
+        'client_email',
+        'client_phone',
+        'title',
+        'category_id',
+        'service_category_id', // keeping for compatibility
         'description',
-        'proposed_price',
+        'budget',
+        'proposed_price', // keeping for compatibility
+        'city',
         'status',
         'selected_provider_id',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 
     public function client(): BelongsTo
     {
