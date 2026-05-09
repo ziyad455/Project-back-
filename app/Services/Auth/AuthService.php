@@ -18,6 +18,16 @@ final class AuthService
     {
         [$firstName, $lastName] = $this->resolveNames($data);
 
+        $skills = $data['skills'] ?? null;
+        if (is_string($skills)) {
+            $skills = array_filter(array_map('trim', explode(',', $skills)));
+        }
+
+        $documentPath = null;
+        if (isset($data['document_student_proof']) && $data['document_student_proof'] instanceof \Illuminate\Http\UploadedFile) {
+            $documentPath = $data['document_student_proof']->store('student_proofs', 'public');
+        }
+
         $user = User::create([
             'first_name' => $firstName,
             'last_name' => $lastName,
@@ -31,11 +41,9 @@ final class AuthService
             'university' => $data['university'] ?? null,
             'field_of_study' => $data['field_of_study'] ?? null,
             'portfolio_url' => $data['portfolio_url'] ?? null,
+            'skills' => $skills,
+            'document_student_proof' => $documentPath,
         ]);
-
-        if (!empty($data['skills'])) {
-            $user->categories()->sync($data['skills']);
-        }
 
         return $user;
     }
