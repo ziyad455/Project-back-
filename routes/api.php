@@ -63,6 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin Routes (Protected by internal isAdmin check in controller)
     Route::prefix('admin')->group(function () {
+        Route::get('/pending-count', [AdminController::class, 'pendingCount']);
         Route::get('/pending-providers', [AdminController::class, 'pendingProviders']);
         Route::post('/verify-provider/{id}', [AdminController::class, 'verifyProvider']);
         Route::post('/reject-provider/{id}', [AdminController::class, 'rejectProvider']);

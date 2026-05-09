@@ -8,7 +8,22 @@ use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
 {
+    public function pendingCount()
+    {
+        if (!auth()->user()->is_admin) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
 
+        $count = User::where('role', 'provider')
+            ->where('is_verified_student', false)
+            ->where(function($q) {
+                $q->whereNotNull('document_id_card')
+                  ->orWhereNotNull('document_student_proof');
+            })
+            ->count();
+
+        return response()->json(['count' => $count]);
+    }
 
     /**
      * Get a list of providers awaiting verification.
