@@ -25,6 +25,25 @@ class AdminController extends Controller
         return response()->json(['count' => $count]);
     }
 
+    public function allProviders()
+    {
+        if (!auth()->user()->is_admin) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $providers = User::where('role', 'provider')
+            ->select([
+                'id', 'first_name', 'last_name', 'email', 'created_at',
+                'university', 'field_of_study', 'is_verified_student',
+                'document_id_card', 'document_student_proof'
+            ])
+            ->orderBy('is_verified_student', 'asc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($providers);
+    }
+
     /**
      * Get a list of providers awaiting verification.
      */
