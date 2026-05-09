@@ -24,6 +24,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::get('/categories', [ServiceCategoryController::class, 'index']);
 Route::get('/providers', [UserController::class, 'providers']);
 Route::get('/providers/{id}', [UserController::class, 'show']);
+Route::post('/missions', [ServiceRequestController::class, 'storePublic']);
 
 // ── Protected routes ───────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {

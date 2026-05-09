@@ -30,23 +30,28 @@ class NewServiceRequestNotification extends Notification implements ShouldQueue
      */
     public function toArray(object $notifiable): array
     {
-        $client = $this->serviceRequest->client;
         $category = $this->serviceRequest->category;
+        
+        $clientName = $this->serviceRequest->client 
+            ? ($this->serviceRequest->client->first_name . ' ' . $this->serviceRequest->client->last_name)
+            : ($this->serviceRequest->client_name ?? 'Un client');
+
+        $price = $this->serviceRequest->budget ?? $this->serviceRequest->proposed_price;
+        $title = $this->serviceRequest->title ?? ($category->name ?? 'Service');
 
         return [
             'service_request_id' => $this->serviceRequest->id,
-            'title'              => 'Nouvelle demande de service',
+            'title'              => 'Nouvelle mission: ' . $title,
             'message'            => sprintf(
-                '%s %s cherche un %s à %s pour %s DH.',
-                $client->first_name,
-                $client->last_name,
+                '%s cherche un %s à %s pour %s DH.',
+                $clientName,
                 $category->name ?? 'service',
                 $this->serviceRequest->city,
-                number_format($this->serviceRequest->proposed_price, 0, ',', ' ')
+                number_format($price, 0, ',', ' ')
             ),
             'tier'               => $this->tier,
             'city'               => $this->serviceRequest->city,
-            'proposed_price'     => $this->serviceRequest->proposed_price,
+            'proposed_price'     => $price,
         ];
     }
 }
