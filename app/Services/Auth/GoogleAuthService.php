@@ -47,7 +47,7 @@ final class GoogleAuthService
             'google_id' => $googleUser->getId(),
             'avatar' => $googleUser->getAvatar(),
             'role' => $role,
-        ]);
+        ])->refresh();
     }
 
     /**

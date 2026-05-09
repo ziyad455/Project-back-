@@ -31,10 +31,33 @@ class ServiceRequestTest extends TestCase
         ]);
     }
 
+    public function test_guest_can_create_service_request()
+    {
+        $category = ServiceCategory::create(['name' => 'Plumbing']);
+
+        $response = $this->postJson('/api/requests', [
+            'guest_name' => 'Guest Client',
+            'guest_email' => 'guest@example.com',
+            'guest_whatsapp_number' => '0600000000',
+            'city' => 'Marrakech',
+            'service_category_id' => $category->id,
+            'description' => 'Fix my sink',
+            'proposed_price' => 200,
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('service_requests', [
+            'client_id' => null,
+            'guest_name' => 'Guest Client',
+            'guest_whatsapp_number' => '0600000000',
+            'description' => 'Fix my sink',
+        ]);
+    }
+
     public function test_provider_can_place_offer()
     {
         $client = User::factory()->create(['role' => 'client']);
-        $provider = User::factory()->create(['role' => 'provider']);
+        $provider = User::factory()->create(['role' => 'provider', 'is_verified_student' => true]);
         $category = ServiceCategory::create(['name' => 'Plumbing']);
         $request = ServiceRequest::create([
             'client_id' => $client->id,
@@ -57,10 +80,31 @@ class ServiceRequestTest extends TestCase
         ]);
     }
 
+    public function test_unverified_provider_cannot_place_offer()
+    {
+        $client = User::factory()->create(['role' => 'client']);
+        $provider = User::factory()->create(['role' => 'provider', 'is_verified_student' => false]);
+        $category = ServiceCategory::create(['name' => 'Plumbing']);
+        $request = ServiceRequest::create([
+            'client_id' => $client->id,
+            'city' => 'Marrakech',
+            'service_category_id' => $category->id,
+            'description' => 'Fix my sink',
+            'proposed_price' => 200,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($provider, 'sanctum')->postJson("/api/requests/{$request->id}/offers", [
+            'offered_price' => 250,
+        ]);
+
+        $response->assertStatus(403);
+    }
+
     public function test_client_can_accept_offer()
     {
         $client = User::factory()->create(['role' => 'client']);
-        $provider = User::factory()->create(['role' => 'provider']);
+        $provider = User::factory()->create(['role' => 'provider', 'is_verified_student' => true]);
         $category = ServiceCategory::create(['name' => 'Plumbing']);
         $request = ServiceRequest::create([
             'client_id' => $client->id,
@@ -83,5 +127,47 @@ class ServiceRequestTest extends TestCase
         $this->assertEquals('accepted', $offer->fresh()->status);
         $this->assertEquals('provider_selected', $request->fresh()->status);
         $this->assertEquals($provider->id, $request->fresh()->selected_provider_id);
+    }
+
+    public function test_public_provider_payload_does_not_expose_whatsapp()
+    {
+        User::factory()->create([
+            'role' => 'provider',
+            'is_verified_student' => true,
+            'whatsapp_number' => '0600000002',
+        ]);
+
+        $response = $this->getJson('/api/providers');
+
+        $response->assertStatus(200)
+            ->assertJsonMissingPath('0.whatsapp_number');
+    }
+
+    public function test_authenticated_client_can_reveal_provider_whatsapp()
+    {
+        $client = User::factory()->create(['role' => 'client']);
+        $provider = User::factory()->create([
+            'role' => 'provider',
+            'is_verified_student' => true,
+            'whatsapp_number' => '0600000002',
+        ]);
+
+        $response = $this->actingAs($client, 'sanctum')->getJson("/api/providers/{$provider->id}/contact");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('whatsapp_number', '0600000002');
+    }
+
+    public function test_guest_cannot_reveal_provider_whatsapp()
+    {
+        $provider = User::factory()->create([
+            'role' => 'provider',
+            'is_verified_student' => true,
+            'whatsapp_number' => '0600000002',
+        ]);
+
+        $response = $this->getJson("/api/providers/{$provider->id}/contact");
+
+        $response->assertStatus(401);
     }
 }

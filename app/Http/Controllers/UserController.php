@@ -54,9 +54,9 @@ class UserController extends Controller
             ->where('is_verified_student', true)
             ->select([
                 'id', 'first_name', 'last_name', 'title', 'city', 'avatar',
-                'bio', 'skills', 'hourly_rate', 'average_rating',
+                'bio', 'skills', 'hourly_rate', 'average_rating', 'is_verified_student',
                 'total_votes', 'completed_jobs', 'job_success_rate',
-                'portfolio_url', 'university', 'field_of_study', 'whatsapp_number'
+                'portfolio_url', 'university', 'field_of_study'
             ])
             ->orderByDesc('average_rating')
             ->orderByDesc('total_votes');
@@ -92,13 +92,35 @@ class UserController extends Controller
             ->where('is_verified_student', true)
             ->select([
                 'id', 'first_name', 'last_name', 'title', 'city', 'avatar',
-                'bio', 'skills', 'hourly_rate', 'average_rating',
+                'bio', 'skills', 'hourly_rate', 'average_rating', 'is_verified_student',
                 'total_votes', 'completed_jobs', 'job_success_rate',
-                'portfolio_url', 'university', 'field_of_study', 'whatsapp_number'
+                'portfolio_url', 'university', 'field_of_study'
             ])
             ->firstOrFail();
 
         return response()->json($user);
+    }
+
+    /**
+     * Reveal a provider's WhatsApp number to authenticated clients only.
+     */
+    public function contact(Request $request, $id)
+    {
+        if ($request->user()->role !== 'client') {
+            return response()->json(['message' => 'Only authenticated clients can contact talents'], 403);
+        }
+
+        $provider = User::where('id', $id)
+            ->where('role', 'provider')
+            ->where('is_verified_student', true)
+            ->select(['id', 'first_name', 'last_name', 'whatsapp_number'])
+            ->firstOrFail();
+
+        return response()->json([
+            'provider_id' => $provider->id,
+            'name' => trim($provider->first_name.' '.$provider->last_name),
+            'whatsapp_number' => $provider->whatsapp_number,
+        ]);
     }
 
     /**

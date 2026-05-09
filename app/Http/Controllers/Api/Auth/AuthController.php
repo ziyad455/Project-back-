@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\TalentRegisterRequest;
 use App\Models\User;
 use App\Services\Auth\AuthService;
 use App\Support\ApiResponse;
@@ -22,9 +23,22 @@ final class AuthController extends Controller
 
     public function register(RegisterRequest $request): JsonResponse
     {
-        $user = $this->authService->register($request->validated());
+        $user = $this->authService->register([
+            ...$request->validated(),
+            'role' => 'client',
+        ]);
 
         return $this->authenticatedResponse($request, $user, 'Inscription réussie', 201);
+    }
+
+    public function registerTalent(TalentRegisterRequest $request): JsonResponse
+    {
+        $user = $this->authService->register([
+            ...$request->validated(),
+            'role' => 'provider',
+        ]);
+
+        return $this->authenticatedResponse($request, $user, 'Inscription talent soumise pour vérification', 201);
     }
 
     public function login(LoginRequest $request): JsonResponse

@@ -21,10 +21,8 @@ final class GoogleAuthController extends Controller
 
     public function redirect(Request $request): RedirectResponse
     {
-        $role = $this->resolveRole($request->query('role'));
-
         if ($request->hasSession()) {
-            $request->session()->put('oauth_role', $role);
+            $request->session()->put('oauth_role', 'client');
         }
 
         return Socialite::driver('google')->redirect();
@@ -43,7 +41,7 @@ final class GoogleAuthController extends Controller
                 $request->session()->regenerate();
             }
 
-            return redirect()->away($this->frontendUrl('/dashboard'));
+            return redirect()->away($this->frontendUrl('/talents'));
         } catch (Throwable $exception) {
             report($exception);
 
@@ -58,8 +56,6 @@ final class GoogleAuthController extends Controller
 
     private function resolveRole(mixed $role): string
     {
-        $role = $role === 'stagiaire' ? 'provider' : $role;
-
-        return Arr::first(['client', 'provider'], fn (string $allowedRole): bool => $allowedRole === $role) ?? 'client';
+        return Arr::first(['client'], fn (string $allowedRole): bool => $allowedRole === $role) ?? 'client';
     }
 }

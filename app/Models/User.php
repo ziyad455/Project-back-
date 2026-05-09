@@ -67,6 +67,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'skills' => 'array',
+            'is_admin' => 'boolean',
+            'is_verified_student' => 'boolean',
         ];
     }
 

@@ -3,7 +3,8 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use App\Models\User;
 
@@ -21,7 +22,6 @@ class AuthTest extends TestCase
             'password_confirmation' => 'password',
             'whatsapp_number' => '0600000000',
             'city' => 'Marrakech',
-            'role' => 'client',
         ]);
 
         $response->assertStatus(201)
@@ -37,6 +37,57 @@ class AuthTest extends TestCase
         $this->assertDatabaseHas('users', [
             'email' => 'john@example.com',
             'role' => 'client',
+        ]);
+    }
+
+    public function test_client_registration_ignores_provider_role()
+    {
+        $response = $this->postJson('/api/register', [
+            'first_name' => 'Jane',
+            'last_name' => 'Client',
+            'email' => 'jane@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'role' => 'provider',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.user.role', 'client');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'jane@example.com',
+            'role' => 'client',
+        ]);
+    }
+
+    public function test_talent_registration_uses_dedicated_endpoint()
+    {
+        Storage::fake('public');
+
+        $response = $this->post('/api/register/talent', [
+            'first_name' => 'Sara',
+            'last_name' => 'Talent',
+            'email' => 'sara@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'whatsapp_number' => '0600000001',
+            'city' => 'Marrakech',
+            'bio' => 'Full stack student developer.',
+            'hourly_rate' => 150,
+            'skills' => 'Laravel, React',
+            'university' => 'Cadi Ayyad',
+            'field_of_study' => 'Computer Science',
+            'document_student_proof' => UploadedFile::fake()->create('student-card.pdf', 100, 'application/pdf'),
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.user.role', 'provider')
+            ->assertJsonPath('data.user.is_verified_student', false);
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'sara@example.com',
+            'role' => 'provider',
+            'is_verified_student' => false,
         ]);
     }
 

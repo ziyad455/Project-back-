@@ -45,7 +45,7 @@ final class AuthService
             'document_student_proof' => $documentPath,
         ]);
 
-        return $user;
+        return $user->refresh();
     }
 
     /**

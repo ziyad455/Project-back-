@@ -18,6 +18,9 @@ class ServiceRequest extends Model
         'title',
         'category_id',
         'service_category_id', // keeping for compatibility
+        'guest_name',
+        'guest_email',
+        'guest_whatsapp_number',
         'description',
         'budget',
         'proposed_price', // keeping for compatibility

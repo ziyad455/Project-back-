@@ -37,6 +37,7 @@ class NewServiceRequestNotification extends Notification implements ShouldQueue
 
         $price = $this->serviceRequest->budget ?? $this->serviceRequest->proposed_price;
         $title = $this->serviceRequest->title ?? ($category->name ?? 'Service');
+        $categoryName = $category->name ?? 'prestataire';
         $city  = $this->serviceRequest->city;
 
         $badge = $this->tier === 'top'
@@ -47,7 +48,7 @@ class NewServiceRequestNotification extends Notification implements ShouldQueue
             ->subject("🚀 AjiKhdam — Nouvelle mission : {$title}")
             ->greeting("Bonjour {$notifiable->first_name} !")
             ->line($badge)
-            ->line("**{$clientName}** recherche un **{$category?->name ?? 'prestataire'}** à **{$city}** pour **{$price} DH**.")
+            ->line("**{$clientName}** recherche un **{$categoryName}** à **{$city}** pour **{$price} DH**.")
             ->when($this->serviceRequest->description, fn($mail) =>
                 $mail->line("Description : " . \Str::limit($this->serviceRequest->description, 200))
             )
@@ -62,11 +63,11 @@ class NewServiceRequestNotification extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         $category = $this->serviceRequest->category;
-        
-        $clientName = $this->serviceRequest->client 
-            ? ($this->serviceRequest->client->first_name . ' ' . $this->serviceRequest->client->last_name)
-            : ($this->serviceRequest->client_name ?? 'Un client');
+        $client = $this->serviceRequest->client;
 
+        $clientName = $client
+            ? trim($client->first_name.' '.$client->last_name)
+            : ($this->serviceRequest->client_name ?? $this->serviceRequest->guest_name ?? 'Un client');
         $price = $this->serviceRequest->budget ?? $this->serviceRequest->proposed_price;
         $title = $this->serviceRequest->title ?? ($category->name ?? 'Service');
 

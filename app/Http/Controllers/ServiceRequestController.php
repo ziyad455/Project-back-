@@ -16,14 +16,20 @@ class ServiceRequestController extends Controller
      */
     public function index(Request $request)
     {
+        $user = $request->user();
+
+        if ($user->role !== 'provider' || ! $user->is_verified_student) {
+            return response()->json(['message' => 'Only verified talents can view service requests'], 403);
+        }
+
         $query = ServiceRequest::whereIn('status', ['pending', 'open'])->with('category', 'client');
 
         if ($request->has('city')) {
             $query->where('city', $request->city);
         }
 
-        if ($request->has('category_id')) {
-            $ids = explode(',', $request->category_id);
+        if ($request->has('category_id') || $request->has('service_category_id')) {
+            $ids = explode(',', $request->category_id ?? $request->service_category_id);
             $query->where(function($q) use ($ids) {
                 $q->whereIn('service_category_id', $ids)
                   ->orWhereIn('category_id', $ids);
@@ -41,14 +47,28 @@ class ServiceRequestController extends Controller
      */
     public function store(Request $request)
     {
+        $user = $request->user('sanctum') ?? $request->user();
+
+        if ($user && $user->role !== 'client') {
+            return response()->json(['message' => 'Only clients can create service requests'], 403);
+        }
+
         $validated = $request->validate([
             'city'                => 'required|string',
             'service_category_id' => 'required|exists:service_categories,id',
             'description'         => 'required|string',
             'proposed_price'      => 'required|numeric|min:0',
+            'guest_name'          => [$user ? 'nullable' : 'required', 'string', 'max:255'],
+            'guest_email'         => ['nullable', 'email', 'max:255'],
+            'guest_whatsapp_number' => [$user ? 'nullable' : 'required', 'string', 'max:20'],
         ]);
 
-        $serviceRequest = Auth::user()->serviceRequests()->create($validated);
+        if ($user) {
+            $validated['client_id'] = $user->id;
+            unset($validated['guest_name'], $validated['guest_email'], $validated['guest_whatsapp_number']);
+        }
+
+        $serviceRequest = ServiceRequest::create($validated);
         $serviceRequest->load('category', 'client');
 
         // ── Tiered Notification Logic ──────────────────────────────────────────
@@ -80,9 +100,32 @@ class ServiceRequestController extends Controller
     /**
      * Display the specified request with its offers.
      */
-    public function show(ServiceRequest $serviceRequest)
+    public function show(Request $request, ServiceRequest $serviceRequest)
     {
-        return response()->json($serviceRequest->load(['category', 'client', 'offers.provider', 'review']));
+        $user = $request->user();
+        $isOwner = ($serviceRequest->client_id !== null && $user->id === $serviceRequest->client_id)
+            || ($serviceRequest->user_id !== null && $user->id === $serviceRequest->user_id);
+        $isSelectedProvider = $user->id === $serviceRequest->selected_provider_id;
+        $hasOwnOffer = $serviceRequest->offers()->where('provider_id', $user->id)->exists();
+        $canProviderView = $user->role === 'provider'
+            && $user->is_verified_student
+            && (in_array($serviceRequest->status, ['pending', 'open'], true) || $isSelectedProvider || $hasOwnOffer);
+
+        if (! $user->is_admin && ! $isOwner && ! $canProviderView) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($canProviderView && ! $isOwner && ! $user->is_admin) {
+            return response()->json($serviceRequest->load([
+                'category',
+                'client',
+                'selectedProvider',
+                'review',
+                'offers' => fn ($query) => $query->where('provider_id', $user->id)->with('provider'),
+            ]));
+        }
+
+        return response()->json($serviceRequest->load(['category', 'client', 'offers.provider', 'selectedProvider', 'review']));
     }
 
     /**
@@ -90,6 +133,10 @@ class ServiceRequestController extends Controller
      */
     public function myRequests()
     {
+        if (Auth::user()->role !== 'client') {
+            return response()->json(['message' => 'Only clients can view their service requests'], 403);
+        }
+
         return response()->json(
             Auth::user()->serviceRequests()->with(['category', 'offers.provider', 'selectedProvider'])->latest()->get()
         );
@@ -102,8 +149,9 @@ class ServiceRequestController extends Controller
     {
         $userId = Auth::id();
         $isOwner = $userId === $serviceRequest->client_id || $userId === $serviceRequest->user_id;
+        $isSelectedProvider = $userId === $serviceRequest->selected_provider_id;
 
-        if (!$isOwner) {
+        if (!$isOwner && !$isSelectedProvider) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -162,7 +210,7 @@ class ServiceRequestController extends Controller
             'description'         => $validated['description'],
             'budget'              => $validated['budget'],
             'city'                => $validated['city'],
-            'deadline'            => $validated['deadline'],
+            'deadline'            => $validated['deadline'] ?? null,
             'status'              => 'open',
         ]);
 

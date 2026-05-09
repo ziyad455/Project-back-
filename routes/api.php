@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 // ── Public routes ──────────────────────────────────────────────────────────
 Route::prefix('auth')->group(function (): void {
     Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/register/talent', [AuthController::class, 'registerTalent']);
     Route::post('/login', [AuthController::class, 'login']);
     // Google OAuth
     Route::get('/google/redirect', [\App\Http\Controllers\Api\Auth\GoogleAuthController::class, 'redirect']);
@@ -21,6 +22,7 @@ Route::prefix('auth')->group(function (): void {
 
 // For backward compatibility if needed
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register/talent', [AuthController::class, 'registerTalent']);
 Route::post('/login', [AuthController::class, 'login']);
 
 // Public discovery routes (no auth required)
@@ -29,6 +31,8 @@ Route::get('/users', [UserController::class, 'index']);
 Route::get('/providers', [UserController::class, 'providers']);
 Route::get('/providers/{id}', [UserController::class, 'show']);
 Route::post('/missions', [ServiceRequestController::class, 'storePublic']);
+Route::get('/providers/{providerId}/reviews', [ReviewController::class, 'index']);
+Route::post('/requests', [ServiceRequestController::class, 'store']);
 
 // ── Protected routes ───────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
@@ -45,7 +49,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Service Requests
     Route::get('/requests', [ServiceRequestController::class, 'index']);
-    Route::post('/requests', [ServiceRequestController::class, 'store']);
     Route::get('/requests/my', [ServiceRequestController::class, 'myRequests']);
     Route::get('/requests/{serviceRequest}', [ServiceRequestController::class, 'show']);
     Route::post('/requests/{serviceRequest}/complete', [ServiceRequestController::class, 'complete']);
@@ -56,7 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Reviews
     Route::post('/requests/{serviceRequest}/reviews', [ReviewController::class, 'store']);
-    Route::get('/providers/{providerId}/reviews', [ReviewController::class, 'index']);
+    Route::get('/providers/{id}/contact', [UserController::class, 'contact']);
 
     // Notifications
     Route::get('/notifications', fn() => response()->json(auth()->user()->notifications));
