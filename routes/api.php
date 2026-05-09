@@ -22,6 +22,7 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // Public discovery routes (no auth required)
 Route::get('/categories', [ServiceCategoryController::class, 'index']);
+Route::get('/users', [UserController::class, 'index']);
 Route::get('/providers', [UserController::class, 'providers']);
 Route::get('/providers/{id}', [UserController::class, 'show']);
 Route::post('/missions', [ServiceRequestController::class, 'storePublic']);
