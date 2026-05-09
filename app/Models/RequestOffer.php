@@ -11,6 +11,7 @@ class RequestOffer extends Model
         'service_request_id',
         'provider_id',
         'offered_price',
+        'message',
         'status',
     ];
 

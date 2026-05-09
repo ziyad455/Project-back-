@@ -24,11 +24,16 @@ class RequestOfferController extends Controller
 
         $validated = $request->validate([
             'offered_price' => 'required|numeric|min:0',
+            'message' => 'nullable|string|max:1000',
         ]);
 
         $offer = $serviceRequest->offers()->updateOrCreate(
             ['provider_id' => Auth::id()],
-            ['offered_price' => $validated['offered_price'], 'status' => 'pending']
+            [
+                'offered_price' => $validated['offered_price'],
+                'message' => $validated['message'] ?? null,
+                'status' => 'pending'
+            ]
         );
 
         return response()->json($offer, 201);

@@ -16,7 +16,7 @@ class UserController extends Controller
         $query = User::where('role', 'provider')
             ->where('is_verified_student', true)
             ->select([
-                'id', 'first_name', 'last_name', 'title', 'city',
+                'id', 'first_name', 'last_name', 'title', 'city', 'avatar',
                 'bio', 'skills', 'hourly_rate', 'average_rating',
                 'total_votes', 'completed_jobs', 'job_success_rate',
                 'portfolio_url', 'university', 'field_of_study', 'whatsapp_number'
@@ -54,7 +54,7 @@ class UserController extends Controller
             ->where('role', 'provider')
             ->where('is_verified_student', true)
             ->select([
-                'id', 'first_name', 'last_name', 'title', 'city',
+                'id', 'first_name', 'last_name', 'title', 'city', 'avatar',
                 'bio', 'skills', 'hourly_rate', 'average_rating',
                 'total_votes', 'completed_jobs', 'job_success_rate',
                 'portfolio_url', 'university', 'field_of_study', 'whatsapp_number'
