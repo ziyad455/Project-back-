@@ -29,7 +29,7 @@ Route::post('/missions', [ServiceRequestController::class, 'storePublic']);
 
 // ── Protected routes ───────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
-
+    Route::get('/provider/stats', [ServiceRequestController::class, 'getStats']);
     // Auth
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/user', [AuthController::class, 'user']);

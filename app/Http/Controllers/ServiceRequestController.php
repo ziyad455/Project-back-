@@ -195,4 +195,40 @@ class ServiceRequestController extends Controller
             'request' => $serviceRequest
         ], 201);
     }
+
+    /**
+     * Get statistics for the provider dashboard.
+     */
+    public function getStats()
+    {
+        $provider = Auth::user();
+
+        // 1. Available missions (open missions in city & matching provider's categories)
+        // We get the provider's category IDs from the pivot table (provider_services)
+        $providerCategoryIds = $provider->categories()->pluck('service_categories.id')->toArray();
+
+        $availableMissionsCount = ServiceRequest::where('status', 'open')
+            ->where('city', $provider->city)
+            ->whereIn('service_category_id', $providerCategoryIds)
+            ->count();
+
+        // 2. Pending offers (offers by provider on pending/open requests)
+        $pendingOffersCount = \App\Models\RequestOffer::where('provider_id', $provider->id)
+            ->whereHas('serviceRequest', function($q) {
+                $q->whereIn('status', ['pending', 'open']);
+            })
+            ->count();
+
+        // 3. Completed missions (missions where this provider was selected and marked completed)
+        $completedMissionsCount = ServiceRequest::where('status', 'completed')
+            ->where('selected_provider_id', $provider->id)
+            ->count();
+
+        return response()->json([
+            'available_missions' => $availableMissionsCount,
+            'pending_offers'     => $pendingOffersCount,
+            'completed_missions' => $completedMissionsCount,
+            'rating'             => $provider->average_rating ?: 0,
+        ]);
+    }
 }
