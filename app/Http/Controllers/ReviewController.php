@@ -17,12 +17,12 @@ class ReviewController extends Controller
     public function store(Request $request, ServiceRequest $serviceRequest)
     {
         // Only the client of the request can leave a review
-        if ($serviceRequest->client_id !== Auth::id()) {
+        if ($serviceRequest->client_id !== Auth::id() && $serviceRequest->user_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Only completed or provider_selected requests can be reviewed
-        if (!in_array($serviceRequest->status, ['completed', 'provider_selected'])) {
+        // Only completed or in_progress requests can be reviewed
+        if (!in_array($serviceRequest->status, ['completed', 'in_progress', 'provider_selected'])) {
             return response()->json(['message' => 'This request cannot be reviewed yet'], 400);
         }
 
