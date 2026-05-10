@@ -119,4 +119,64 @@ class AdminController extends Controller
             'message' => 'Documents rejetés. Le prestataire doit les soumettre à nouveau.'
         ]);
     }
+
+    /**
+     * Get all missions (for admin).
+     */
+    public function allMissions()
+    {
+        if (!auth()->user()->is_admin) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $missions = \App\Models\ServiceRequest::with(['category'])
+            ->select(['id', 'title', 'client_name', 'city', 'status', 'budget', 'service_category_id', 'created_at'])
+            ->latest()
+            ->get();
+
+        return response()->json($missions);
+    }
+
+    /**
+     * Delete a mission (admin).
+     */
+    public function deleteMission($id)
+    {
+        if (!auth()->user()->is_admin) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        \App\Models\ServiceRequest::findOrFail($id)->delete();
+        return response()->json(['message' => 'Mission supprimée.']);
+    }
+
+    /**
+     * Delete a provider (admin).
+     */
+    public function deleteProvider($id)
+    {
+        if (!auth()->user()->is_admin) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        User::where('role', 'provider')->findOrFail($id)->delete();
+        return response()->json(['message' => 'Talent supprimé.']);
+    }
+
+    /**
+     * Platform-wide statistics.
+     */
+    public function platformStats()
+    {
+        if (!auth()->user()->is_admin) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        return response()->json([
+            'total_verified'   => User::where('role', 'provider')->where('is_verified_student', true)->count(),
+            'total_pending'    => User::where('role', 'provider')->where('is_verified_student', false)
+                                      ->where(fn($q) => $q->whereNotNull('document_id_card')->orWhereNotNull('document_student_proof'))
+                                      ->count(),
+            'open_missions'    => \App\Models\ServiceRequest::where('status', 'open')->count(),
+            'total_offers'     => \App\Models\RequestOffer::count(),
+        ]);
+    }
 }
