@@ -70,5 +70,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/pending-providers', [AdminController::class, 'pendingProviders']);
         Route::post('/verify-provider/{id}', [AdminController::class, 'verifyProvider']);
         Route::post('/reject-provider/{id}', [AdminController::class, 'rejectProvider']);
+        Route::delete('/provider/{id}', [AdminController::class, 'deleteProvider']);
+        Route::get('/all-missions', [AdminController::class, 'allMissions']);
+        Route::delete('/mission/{id}', [AdminController::class, 'deleteMission']);
+        Route::get('/stats', [AdminController::class, 'platformStats']);
     });
 });
