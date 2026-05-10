@@ -82,7 +82,7 @@ class ServiceRequestController extends Controller
      */
     public function show(ServiceRequest $serviceRequest)
     {
-        return response()->json($serviceRequest->load(['category', 'client', 'offers.provider']));
+        return response()->json($serviceRequest->load(['category', 'client', 'offers.provider', 'review']));
     }
 
     /**
@@ -100,13 +100,16 @@ class ServiceRequestController extends Controller
      */
     public function complete(ServiceRequest $serviceRequest)
     {
-        if (Auth::id() !== $serviceRequest->client_id && Auth::id() !== $serviceRequest->selected_provider_id) {
+        $userId = Auth::id();
+        $isOwner = $userId === $serviceRequest->client_id || $userId === $serviceRequest->user_id;
+
+        if (!$isOwner) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         $serviceRequest->update(['status' => 'completed']);
 
-        return response()->json(['message' => 'Request marked as completed', 'request' => $serviceRequest]);
+        return response()->json(['message' => 'Mission marked as completed', 'request' => $serviceRequest]);
     }
 
     /**

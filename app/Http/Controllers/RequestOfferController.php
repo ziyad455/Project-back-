@@ -9,9 +9,7 @@ use Illuminate\Support\Facades\Auth;
 
 class RequestOfferController extends Controller
 {
-    /**
-     * Provider places an offer on a request.
-     */
+
     public function store(Request $request, ServiceRequest $serviceRequest)
     {
         if (Auth::user()->role !== 'provider') {
@@ -60,9 +58,9 @@ class RequestOfferController extends Controller
         // Mark other offers as rejected
         $serviceRequest->offers()->where('id', '!=', $requestOffer->id)->update(['status' => 'rejected']);
 
-        // Update the request status and set the provider
+        // Update the request status to in_progress and set the provider
         $serviceRequest->update([
-            'status' => 'provider_selected',
+            'status' => 'in_progress',
             'selected_provider_id' => $requestOffer->provider_id
         ]);
 
