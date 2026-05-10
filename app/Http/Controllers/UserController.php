@@ -185,4 +185,20 @@ class UserController extends Controller
 
         return response()->json(['message' => 'Profil mis à jour avec succès', 'user' => $user]);
     }
+
+    /**
+     * Update the authenticated user's phone number.
+     */
+    public function updatePhone(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'whatsapp_number' => 'required|string|max:20',
+        ]);
+
+        $user->update(['whatsapp_number' => $validated['whatsapp_number']]);
+
+        return response()->json(['message' => 'Numéro ajouté avec succès', 'user' => $user]);
+    }
 }

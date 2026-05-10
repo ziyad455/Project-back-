@@ -47,7 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [UserController::class, 'myProfile']);
     Route::put('/profile', [UserController::class, 'updateProfile']);
     Route::get('/talent/stats', [UserController::class, 'talentStats']);
-
+    Route::patch('/user/phone', [UserController::class, 'updatePhone']);
     // Service Requests
     Route::get('/requests', [ServiceRequestController::class, 'index']);
     Route::get('/requests/my', [ServiceRequestController::class, 'myRequests']);
