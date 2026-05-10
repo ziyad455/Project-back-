@@ -9,6 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ServiceRequest extends Model
 {
+    protected $hidden = [
+        'guest_email',
+        'guest_whatsapp_number',
+    ];
+
     protected $fillable = [
         'user_id',
         'client_id', // keeping for compatibility

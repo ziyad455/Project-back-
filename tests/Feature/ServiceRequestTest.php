@@ -46,6 +46,8 @@ class ServiceRequestTest extends TestCase
         ]);
 
         $response->assertStatus(201);
+        $response->assertJsonMissingPath('guest_whatsapp_number');
+
         $this->assertDatabaseHas('service_requests', [
             'client_id' => null,
             'guest_name' => 'Guest Client',
@@ -78,6 +80,62 @@ class ServiceRequestTest extends TestCase
             'provider_id' => $provider->id,
             'offered_price' => 250,
         ]);
+    }
+
+    public function test_provider_can_view_own_offers()
+    {
+        $client = User::factory()->create(['role' => 'client']);
+        $provider = User::factory()->create(['role' => 'provider', 'is_verified_student' => true]);
+        $category = ServiceCategory::create(['name' => 'Plumbing']);
+        $request = ServiceRequest::create([
+            'client_id' => $client->id,
+            'city' => 'Marrakech',
+            'service_category_id' => $category->id,
+            'description' => 'Fix my sink',
+            'proposed_price' => 200,
+            'status' => 'pending',
+        ]);
+
+        $request->offers()->create([
+            'provider_id' => $provider->id,
+            'offered_price' => 250,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($provider, 'sanctum')->getJson('/api/offers/my');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('0.provider_id', $provider->id)
+            ->assertJsonPath('0.service_request.category.name', 'Plumbing');
+    }
+
+    public function test_provider_can_view_talent_stats()
+    {
+        $provider = User::factory()->create([
+            'role' => 'provider',
+            'is_verified_student' => true,
+            'city' => 'Marrakech',
+            'completed_jobs' => 2,
+            'average_rating' => 4.5,
+            'total_votes' => 3,
+        ]);
+        $category = ServiceCategory::create(['name' => 'Plumbing']);
+        ServiceRequest::create([
+            'guest_name' => 'Guest Client',
+            'guest_whatsapp_number' => '0600000000',
+            'city' => 'Marrakech',
+            'service_category_id' => $category->id,
+            'description' => 'Fix my sink',
+            'proposed_price' => 200,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($provider, 'sanctum')->getJson('/api/talent/stats');
+
+        $response->assertStatus(200)
+            ->assertJsonPath('completed_jobs', 2)
+            ->assertJsonPath('open_requests', 1)
+            ->assertJsonPath('is_verified_student', true);
     }
 
     public function test_unverified_provider_cannot_place_offer()
@@ -125,7 +183,7 @@ class ServiceRequestTest extends TestCase
 
         $response->assertStatus(200);
         $this->assertEquals('accepted', $offer->fresh()->status);
-        $this->assertEquals('provider_selected', $request->fresh()->status);
+        $this->assertEquals('in_progress', $request->fresh()->status);
         $this->assertEquals($provider->id, $request->fresh()->selected_provider_id);
     }
 

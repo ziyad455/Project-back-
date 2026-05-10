@@ -9,7 +9,28 @@ use Illuminate\Support\Facades\Auth;
 
 class RequestOfferController extends Controller
 {
+    /**
+     * List offers submitted by the authenticated talent.
+     */
+    public function myOffers()
+    {
+        $user = Auth::user();
 
+        if ($user->role !== 'provider') {
+            return response()->json(['message' => 'Only talents can view submitted offers'], 403);
+        }
+
+        return response()->json(
+            $user->offers()
+                ->with(['serviceRequest.category', 'serviceRequest.client'])
+                ->latest()
+                ->get()
+        );
+    }
+
+    /**
+     * Provider places an offer on a request.
+     */
     public function store(Request $request, ServiceRequest $serviceRequest)
     {
         if (Auth::user()->role !== 'provider') {
@@ -48,7 +69,7 @@ class RequestOfferController extends Controller
     {
         $serviceRequest = $requestOffer->serviceRequest;
 
-        if (Auth::id() !== $serviceRequest->client_id) {
+        if (Auth::id() !== $serviceRequest->client_id && Auth::id() !== $serviceRequest->user_id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 

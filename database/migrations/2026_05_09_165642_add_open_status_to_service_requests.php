@@ -12,7 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE service_requests MODIFY COLUMN status ENUM('pending', 'provider_selected', 'completed', 'cancelled', 'open') NOT NULL DEFAULT 'open'");
+        DB::statement("ALTER TABLE service_requests MODIFY COLUMN status ENUM('pending', 'provider_selected', 'in_progress', 'completed', 'cancelled', 'open') NOT NULL DEFAULT 'open'");
     }
 
     /**

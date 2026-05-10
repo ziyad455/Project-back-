@@ -114,6 +114,29 @@ class AuthTest extends TestCase
                  ]);
     }
 
+    public function test_frontend_session_can_authenticate_after_login()
+    {
+        User::factory()->create([
+            'email' => 'session@example.com',
+            'password' => bcrypt('secret123'),
+        ]);
+
+        $this->withHeader('Origin', 'http://localhost:5173')
+            ->get('/sanctum/csrf-cookie');
+
+        $this->withHeader('Origin', 'http://localhost:5173')
+            ->postJson('/api/auth/login', [
+                'email' => 'session@example.com',
+                'password' => 'secret123',
+            ])
+            ->assertStatus(200);
+
+        $this->withHeader('Origin', 'http://localhost:5173')
+            ->getJson('/api/auth/user')
+            ->assertStatus(200)
+            ->assertJsonPath('data.user.email', 'session@example.com');
+    }
+
     public function test_user_can_logout()
     {
         $user = User::factory()->create();

@@ -46,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Own profile
     Route::get('/profile', [UserController::class, 'myProfile']);
     Route::put('/profile', [UserController::class, 'updateProfile']);
+    Route::get('/talent/stats', [UserController::class, 'talentStats']);
 
     // Service Requests
     Route::get('/requests', [ServiceRequestController::class, 'index']);
@@ -54,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/requests/{serviceRequest}/complete', [ServiceRequestController::class, 'complete']);
 
     // Offers
+    Route::get('/offers/my', [RequestOfferController::class, 'myOffers']);
     Route::post('/requests/{serviceRequest}/offers', [RequestOfferController::class, 'store']);
     Route::post('/offers/{requestOffer}/accept', [RequestOfferController::class, 'accept']);
 
@@ -74,6 +76,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/pending-count', [AdminController::class, 'pendingCount']);
         Route::get('/all-providers', [AdminController::class, 'allProviders']);
         Route::get('/pending-providers', [AdminController::class, 'pendingProviders']);
+        Route::get('/providers/{provider}/documents/{document}', [AdminController::class, 'showProviderDocument'])
+            ->whereIn('document', ['id-card', 'student-proof']);
         Route::post('/verify-provider/{id}', [AdminController::class, 'verifyProvider']);
         Route::post('/reject-provider/{id}', [AdminController::class, 'rejectProvider']);
         Route::delete('/provider/{id}', [AdminController::class, 'deleteProvider']);

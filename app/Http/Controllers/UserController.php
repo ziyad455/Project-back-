@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\ServiceRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -129,6 +130,34 @@ class UserController extends Controller
     public function myProfile()
     {
         return response()->json(Auth::user());
+    }
+
+    /**
+     * Return summary metrics for the authenticated talent dashboard.
+     */
+    public function talentStats(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'provider') {
+            return response()->json(['message' => 'Only talents can view talent stats'], 403);
+        }
+
+        $openRequestsQuery = ServiceRequest::where('status', 'pending');
+
+        if ($user->is_verified_student && $user->city) {
+            $openRequestsQuery->where('city', $user->city);
+        }
+
+        return response()->json([
+            'completed_jobs' => $user->completed_jobs ?? 0,
+            'average_rating' => $user->average_rating ?? 0,
+            'total_votes' => $user->total_votes ?? 0,
+            'open_requests' => $user->is_verified_student ? $openRequestsQuery->count() : 0,
+            'submitted_offers' => $user->offers()->count(),
+            'accepted_offers' => $user->offers()->where('status', 'accepted')->count(),
+            'is_verified_student' => (bool) $user->is_verified_student,
+        ]);
     }
 
     /**

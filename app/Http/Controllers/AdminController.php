@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
@@ -69,6 +68,38 @@ class AdminController extends Controller
             ->get();
 
         return response()->json($providers);
+    }
+
+    /**
+     * Show a provider verification document to an authenticated admin.
+     */
+    public function showProviderDocument(User $provider, string $document)
+    {
+        if (!auth()->user()->is_admin) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($provider->role !== 'provider') {
+            return response()->json(['message' => 'Document introuvable.'], 404);
+        }
+
+        $path = match ($document) {
+            'id-card' => $provider->document_id_card,
+            'student-proof' => $provider->document_student_proof,
+            default => null,
+        };
+
+        if (!$path || !Storage::disk('public')->exists($path)) {
+            return response()->json(['message' => 'Document introuvable.'], 404);
+        }
+
+        $disk = Storage::disk('public');
+        $filename = basename($path);
+
+        return response()->file($disk->path($path), [
+            'Content-Type' => $disk->mimeType($path) ?: 'application/octet-stream',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+        ]);
     }
 
     /**
