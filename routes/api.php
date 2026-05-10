@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('auth')->group(function (): void {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
+    // Google OAuth
+    Route::get('/google/redirect', [\App\Http\Controllers\Api\Auth\GoogleAuthController::class, 'redirect']);
+    Route::get('/google/callback', [\App\Http\Controllers\Api\Auth\GoogleAuthController::class, 'callback']);
 });
 
 // For backward compatibility if needed
