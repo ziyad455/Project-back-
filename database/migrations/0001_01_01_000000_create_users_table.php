@@ -15,11 +15,32 @@ return new class extends Migration
             $table->id();
             $table->string('first_name');
             $table->string('last_name');
-            $table->string('whatsapp_number')->nullable();
-            $table->enum('role', ['client', 'provider', 'admin'])->default('client');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('whatsapp_number')->nullable();
+            $table->string('city')->nullable();
+            $table->enum('role', ['client', 'provider'])->default('client');
+            $table->boolean('is_admin')->default(false);
+            
+            // Talent specific fields
+            $table->boolean('is_verified_student')->default(false);
+            $table->string('document_id_card')->nullable();
+            $table->string('document_student_proof')->nullable();
+            $table->string('university')->nullable();
+            $table->string('field_of_study')->nullable();
+            $table->string('title')->nullable(); // e.g., 'Full Stack Developer'
+            $table->text('bio')->nullable();
+            $table->string('portfolio_url')->nullable();
+            $table->json('skills')->nullable(); // Store array of skills
+            $table->decimal('hourly_rate', 8, 2)->nullable();
+            
+            // Stats
+            $table->integer('completed_jobs')->default(0);
+            $table->decimal('job_success_rate', 5, 2)->nullable(); // e.g., 98.50
+            $table->integer('total_votes')->default(0);
+            $table->decimal('average_rating', 3, 2)->default(0);
+            
             $table->rememberToken();
             $table->timestamps();
         });
