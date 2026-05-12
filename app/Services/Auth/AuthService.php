@@ -37,7 +37,7 @@ final class AuthService
             'city' => $data['city'] ?? null,
             'role' => $data['role'],
             'bio' => $data['bio'] ?? null,
-            'hourly_rate' => $data['hourly_rate'] ?? null,
+
             'university' => $data['university'] ?? null,
             'field_of_study' => $data['field_of_study'] ?? null,
             'portfolio_url' => $data['portfolio_url'] ?? null,

@@ -36,10 +36,7 @@ class NotifyRemainingProviders implements ShouldQueue
 
         $remainingProviders = User::where('role', 'provider')
             ->where('is_verified_student', true)
-            ->whereHas('categories', function($q) {
-                $q->where('service_categories.id', $this->serviceRequest->category_id)
-                  ->orWhere('service_categories.id', $this->serviceRequest->service_category_id);
-            })
+            ->where('city', $this->serviceRequest->city)
             ->whereNotIn('id', $this->excludedProviderIds)
             ->get();
 

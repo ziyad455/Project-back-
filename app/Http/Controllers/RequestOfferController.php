@@ -50,6 +50,14 @@ class RequestOfferController extends Controller
             return ApiResponse::error('You cannot accept your own mission', 400);
         }
 
+        $activeCount = $user->offers()->where('status', 'accepted')
+            ->whereHas('serviceRequest', fn($q) => $q->where('status', 'in_progress'))
+            ->count();
+
+        if ($activeCount >= 5) {
+            return ApiResponse::error('Maximum missions reached (5)', 400);
+        }
+
         $validated = $request->validate([
             'offered_price' => 'nullable|numeric|min:0',
             'message' => 'nullable|string|max:1000',
