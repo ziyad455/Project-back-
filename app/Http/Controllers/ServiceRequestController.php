@@ -64,7 +64,32 @@ class ServiceRequestController extends Controller
             'guest_whatsapp_number' => [$user ? 'nullable' : 'required', 'string', 'max:20'],
         ]);
 
-        if ($user) {
+        if (!$user) {
+            // Find or create guest user
+            $user = User::where('email', $validated['guest_email'])->first();
+            
+            if (!$user) {
+                $nameParts = explode(' ', $validated['guest_name'], 2);
+                $firstName = $nameParts[0];
+                $lastName = isset($nameParts[1]) ? $nameParts[1] : 'Client';
+                
+                $tempPassword = \Illuminate\Support\Str::random(12);
+                $user = User::create([
+                    'first_name' => $firstName,
+                    'last_name'  => $lastName,
+                    'email'      => $validated['guest_email'],
+                    'password'   => bcrypt($tempPassword),
+                    'role'       => 'client',
+                    'whatsapp_number' => $validated['guest_whatsapp_number'],
+                    'city'       => $validated['city'],
+                ]);
+                
+                $user->notify(new WelcomeGuestNotification($tempPassword));
+            }
+            
+            $validated['client_id'] = $user->id;
+            unset($validated['guest_name'], $validated['guest_email'], $validated['guest_whatsapp_number']);
+        } else {
             $validated['client_id'] = $user->id;
             unset($validated['guest_name'], $validated['guest_email'], $validated['guest_whatsapp_number']);
         }
@@ -260,7 +285,7 @@ class ServiceRequestController extends Controller
             $firstName = $nameParts[0];
             $lastName = isset($nameParts[1]) ? $nameParts[1] : '';
 
-            $tempPassword = str()->random(10);
+            $tempPassword = \Illuminate\Support\Str::random(12);
             $user = User::create([
                 'first_name' => $firstName,
                 'last_name'  => $lastName,

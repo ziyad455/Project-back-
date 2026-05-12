@@ -26,12 +26,12 @@ final class TalentRegisterRequest extends FormRequest
             'whatsapp_number' => ['required', 'string', 'max:20'],
             'city' => ['required', 'string', 'max:255'],
             'bio' => ['required', 'string', 'max:1000'],
-            'hourly_rate' => ['required', 'numeric', 'min:0'],
             'skills' => ['required'],
             'university' => ['required', 'string', 'max:255'],
             'field_of_study' => ['required', 'string', 'max:255'],
             'portfolio_url' => ['nullable', 'url', 'max:255'],
             'document_student_proof' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'document_id_card' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ];
     }
 }
