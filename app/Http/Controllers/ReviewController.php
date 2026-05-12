@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Review;
 use App\Models\ServiceRequest;
 use App\Models\User;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,18 +18,18 @@ class ReviewController extends Controller
     public function store(Request $request, ServiceRequest $serviceRequest)
     {
         // Only the client of the request can leave a review
-        if ($serviceRequest->client_id !== Auth::id() && $serviceRequest->user_id !== Auth::id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if ($serviceRequest->client_id !== Auth::id()) {
+            return ApiResponse::error('Unauthorized', 403);
         }
 
-        // Only completed or in_progress requests can be reviewed
-        if (!in_array($serviceRequest->status, ['completed', 'in_progress', 'provider_selected'])) {
-            return response()->json(['message' => 'This request cannot be reviewed yet'], 400);
+        // Only completed missions can be reviewed
+        if ($serviceRequest->status !== 'completed') {
+            return ApiResponse::error('You can only leave a review after the mission is completed', 400);
         }
 
         $providerId = $serviceRequest->selected_provider_id;
         if (!$providerId) {
-            return response()->json(['message' => 'No provider associated with this request'], 400);
+            return ApiResponse::error('No provider associated with this request', 400);
         }
 
         $validated = $request->validate([
@@ -37,17 +38,13 @@ class ReviewController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated, $serviceRequest, $providerId) {
-            // Create the review
             $review = Review::create([
                 'service_request_id' => $serviceRequest->id,
-                'client_id'          => Auth::id(),
+                'reviewer_id'        => Auth::id(),
                 'provider_id'        => $providerId,
                 'rating'             => $validated['rating'],
                 'comment'            => $validated['comment'],
             ]);
-
-            // Mark request as completed if it wasn't already
-            $serviceRequest->update(['status' => 'completed']);
 
             // Update Provider stats
             $provider = User::find($providerId);
@@ -61,14 +58,13 @@ class ReviewController extends Controller
                 'completed_jobs' => $provider->completed_jobs + 1
             ]);
 
-            return response()->json([
-                'message' => 'Merci pour votre avis !',
-                'review'  => $review,
+            return ApiResponse::success([
+                'review' => $review,
                 'provider_stats' => [
                     'rating' => $provider->average_rating,
                     'votes'  => $provider->total_votes
-                ]
-            ]);
+                ],
+            ], 'Merci pour votre avis !');
         });
     }
 
@@ -82,6 +78,6 @@ class ReviewController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return response()->json($reviews);
+        return ApiResponse::success($reviews->toArray(), 'Reviews retrieved');
     }
 }

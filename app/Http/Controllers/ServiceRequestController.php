@@ -5,9 +5,13 @@ namespace App\Http\Controllers;
 use App\Jobs\NotifyRemainingProviders;
 use App\Models\ServiceRequest;
 use App\Models\User;
+use App\Notifications\MissionCompletedNotification;
 use App\Notifications\NewServiceRequestNotification;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
+use App\Notifications\WelcomeGuestNotification;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ServiceRequestController extends Controller
 {
@@ -19,7 +23,7 @@ class ServiceRequestController extends Controller
         $user = $request->user();
 
         if ($user->role !== 'provider' || ! $user->is_verified_student) {
-            return response()->json(['message' => 'Only verified talents can view service requests'], 403);
+            return ApiResponse::error('Only verified talents can view service requests', 403);
         }
 
         $query = ServiceRequest::whereIn('status', ['pending', 'open'])->with('category', 'client');
@@ -29,14 +33,11 @@ class ServiceRequestController extends Controller
         }
 
         if ($request->has('category_id') || $request->has('service_category_id')) {
-            $ids = explode(',', $request->category_id ?? $request->service_category_id);
-            $query->where(function($q) use ($ids) {
-                $q->whereIn('service_category_id', $ids)
-                  ->orWhereIn('category_id', $ids);
-            });
+            $ids = explode(',', $request->service_category_id ?? $request->category_id);
+            $query->whereIn('service_category_id', $ids);
         }
 
-        return response()->json($query->latest()->get());
+        return ApiResponse::success($query->latest()->get()->toArray(), 'Service requests retrieved');
     }
 
     /**
@@ -50,14 +51,14 @@ class ServiceRequestController extends Controller
         $user = $request->user('sanctum') ?? $request->user();
 
         if ($user && $user->role !== 'client') {
-            return response()->json(['message' => 'Only clients can create service requests'], 403);
+            return ApiResponse::error('Only clients can create service requests', 403);
         }
 
         $validated = $request->validate([
             'city'                => 'required|string',
             'service_category_id' => 'required|exists:service_categories,id',
             'description'         => 'required|string',
-            'proposed_price'      => 'required|numeric|min:0',
+            'budget'              => 'nullable|numeric|min:0',
             'guest_name'          => [$user ? 'nullable' : 'required', 'string', 'max:255'],
             'guest_email'         => ['nullable', 'email', 'max:255'],
             'guest_whatsapp_number' => [$user ? 'nullable' : 'required', 'string', 'max:20'],
@@ -72,7 +73,6 @@ class ServiceRequestController extends Controller
         $serviceRequest->load('category', 'client');
 
         // ── Tiered Notification Logic ──────────────────────────────────────────
-        // Get all verified providers in the same city, sorted by rating DESC
         $providers = User::where('role', 'provider')
             ->where('is_verified_student', true)
             ->where('city', $serviceRequest->city)
@@ -80,21 +80,19 @@ class ServiceRequestController extends Controller
             ->orderByDesc('total_votes')
             ->get();
 
-        // Tier 1: Top 10 — notified immediately
         $tier1 = $providers->take(10);
         foreach ($tier1 as $provider) {
             $provider->notify(new NewServiceRequestNotification($serviceRequest, 'top'));
         }
 
-        // Tier 2: The rest — notified after 5 minutes if request still pending
         $tier1Ids = $tier1->pluck('id')->toArray();
         if ($providers->count() > 10) {
             NotifyRemainingProviders::dispatch($serviceRequest, $tier1Ids)
-                ->delay(now()->addMinutes(5));
+                ->delay(now()->addMinutes(30));
         }
         // ──────────────────────────────────────────────────────────────────────
 
-        return response()->json($serviceRequest, 201);
+        return ApiResponse::success($serviceRequest->toArray(), 'Service request created', 201);
     }
 
     /**
@@ -103,8 +101,7 @@ class ServiceRequestController extends Controller
     public function show(Request $request, ServiceRequest $serviceRequest)
     {
         $user = $request->user();
-        $isOwner = ($serviceRequest->client_id !== null && $user->id === $serviceRequest->client_id)
-            || ($serviceRequest->user_id !== null && $user->id === $serviceRequest->user_id);
+        $isOwner = $serviceRequest->client_id !== null && $user->id === $serviceRequest->client_id;
         $isSelectedProvider = $user->id === $serviceRequest->selected_provider_id;
         $hasOwnOffer = $serviceRequest->offers()->where('provider_id', $user->id)->exists();
         $canProviderView = $user->role === 'provider'
@@ -112,20 +109,81 @@ class ServiceRequestController extends Controller
             && (in_array($serviceRequest->status, ['pending', 'open'], true) || $isSelectedProvider || $hasOwnOffer);
 
         if (! $user->is_admin && ! $isOwner && ! $canProviderView) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return ApiResponse::error('Unauthorized', 403);
         }
+
+        $loadRelations = ['category', 'client', 'selectedProvider', 'review'];
 
         if ($canProviderView && ! $isOwner && ! $user->is_admin) {
-            return response()->json($serviceRequest->load([
-                'category',
-                'client',
-                'selectedProvider',
-                'review',
+            $serviceRequest->load(array_merge($loadRelations, [
                 'offers' => fn ($query) => $query->where('provider_id', $user->id)->with('provider'),
             ]));
+        } else {
+            $serviceRequest->load(array_merge($loadRelations, ['offers.provider']));
         }
 
-        return response()->json($serviceRequest->load(['category', 'client', 'offers.provider', 'selectedProvider', 'review']));
+        $responseData = $serviceRequest->toArray();
+
+
+
+        return ApiResponse::success($responseData, 'Service request retrieved');
+    }
+
+    /**
+     * Get the client's WhatsApp contact info for a service request.
+     * Only the selected provider can access this, and only when status is in_progress.
+     */
+    public function clientContact(Request $request, ServiceRequest $serviceRequest)
+    {
+        $user = $request->user();
+
+        if ($user->id !== $serviceRequest->selected_provider_id) {
+            return ApiResponse::error("Only the assigned talent can view the client's contact information", 403);
+        }
+
+        if ($serviceRequest->status !== 'in_progress') {
+            return ApiResponse::error('Contact information is only available for accepted missions', 403);
+        }
+
+        $whatsappInfo = $this->resolveClientWhatsApp($serviceRequest);
+
+        return ApiResponse::success([
+            'client_name'     => $whatsappInfo['client_name'],
+            'whatsapp_number' => $whatsappInfo['whatsapp_number'],
+            'whatsapp_link'   => $whatsappInfo['whatsapp_link'],
+        ], 'Client contact retrieved');
+    }
+
+    /**
+     * Resolve the client's WhatsApp number and build the WhatsApp link.
+     * Handles both registered clients and guest clients.
+     */
+    private function resolveClientWhatsApp(ServiceRequest $serviceRequest): array
+    {
+        $title = $serviceRequest->title ?? 'Mission';
+
+        if ($serviceRequest->client_id && $serviceRequest->client) {
+            $clientName = trim($serviceRequest->client->first_name . ' ' . $serviceRequest->client->last_name);
+            $whatsappNumber = $serviceRequest->client->whatsapp_number;
+        } else {
+            $clientName = $serviceRequest->guest_name
+                ?? $serviceRequest->client_name
+                ?? 'Client';
+            $whatsappNumber = $serviceRequest->guest_whatsapp_number
+                ?? $serviceRequest->client_phone
+                ?? null;
+        }
+
+        $encodedTitle = urlencode($title);
+        $whatsappLink = $whatsappNumber
+            ? "https://wa.me/{$whatsappNumber}?text=Bonjour,%20je%20vous%20contacte%20via%20AjiKhdam%20pour%20la%20mission:%20{$encodedTitle}"
+            : null;
+
+        return [
+            'client_name'     => $clientName,
+            'whatsapp_number' => $whatsappNumber,
+            'whatsapp_link'   => $whatsappLink,
+        ];
     }
 
     /**
@@ -134,30 +192,47 @@ class ServiceRequestController extends Controller
     public function myRequests()
     {
         if (Auth::user()->role !== 'client') {
-            return response()->json(['message' => 'Only clients can view their service requests'], 403);
+            return ApiResponse::error('Only clients can view their service requests', 403);
         }
 
-        return response()->json(
-            Auth::user()->serviceRequests()->with(['category', 'offers.provider', 'selectedProvider'])->latest()->get()
-        );
+        $requests = Auth::user()->serviceRequests()
+            ->with(['category', 'offers.provider', 'selectedProvider'])
+            ->latest()
+            ->get();
+
+        return ApiResponse::success($requests->toArray(), 'My requests retrieved');
     }
 
     /**
      * Mark a request as completed.
+     * Only the selected provider can mark a mission as completed.
      */
     public function complete(ServiceRequest $serviceRequest)
     {
         $userId = Auth::id();
-        $isOwner = $userId === $serviceRequest->client_id || $userId === $serviceRequest->user_id;
-        $isSelectedProvider = $userId === $serviceRequest->selected_provider_id;
 
-        if (!$isOwner && !$isSelectedProvider) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if ($userId !== $serviceRequest->selected_provider_id) {
+            return ApiResponse::error('Only the assigned talent can mark this mission as completed', 403);
         }
 
-        $serviceRequest->update(['status' => 'completed']);
+        if ($serviceRequest->status !== 'in_progress') {
+            return ApiResponse::error('Mission must be in progress to be marked as completed', 400);
+        }
 
-        return response()->json(['message' => 'Mission marked as completed', 'request' => $serviceRequest]);
+        return DB::transaction(function () use ($serviceRequest) {
+            $serviceRequest->update(['status' => 'completed']);
+
+            // Notify the client/owner
+            $client = $serviceRequest->client;
+            if ($client) {
+                $client->notify(new MissionCompletedNotification($serviceRequest));
+            }
+
+            return ApiResponse::success(
+                $serviceRequest->fresh()->toArray(),
+                'Mission marked as completed'
+            );
+        });
     }
 
     /**
@@ -170,9 +245,9 @@ class ServiceRequestController extends Controller
             'client_email' => 'required|email',
             'client_phone' => 'required|string',
             'title'        => 'required|string',
-            'category_id'  => 'required|exists:service_categories,id',
+            'service_category_id' => 'required|exists:service_categories,id',
             'description'  => 'required|string',
-            'budget'       => 'required|numeric|min:0',
+            'budget'       => 'nullable|numeric|min:0',
             'city'         => 'required|string',
             'deadline'     => 'nullable|date|after_or_equal:today',
         ]);
@@ -181,32 +256,33 @@ class ServiceRequestController extends Controller
         $user = User::where('email', $validated['client_email'])->first();
 
         if (!$user) {
-            // Split name into first/last name
             $nameParts = explode(' ', $validated['client_name'], 2);
             $firstName = $nameParts[0];
             $lastName = isset($nameParts[1]) ? $nameParts[1] : '';
 
+            $tempPassword = str()->random(10);
             $user = User::create([
                 'first_name' => $firstName,
                 'last_name'  => $lastName,
                 'email'      => $validated['client_email'],
-                'password'   => bcrypt(str()->random(16)),
+                'password'   => bcrypt($tempPassword),
                 'role'       => 'client',
                 'whatsapp_number' => $validated['client_phone'],
                 'city'       => $validated['city'],
             ]);
+
+            // Notify the user about their account and password
+            $user->notify(new WelcomeGuestNotification($tempPassword));
         }
 
-        // 2. Create Mission
+        // 2. Create Mission — uses canonical fields; boot() will sync legacy ones
         $serviceRequest = ServiceRequest::create([
             'client_id'           => $user->id,
-            'user_id'             => $user->id, // keeping both for compatibility
             'client_name'         => $validated['client_name'],
             'client_email'        => $validated['client_email'],
             'client_phone'        => $validated['client_phone'],
             'title'               => $validated['title'],
-            'service_category_id' => $validated['category_id'],
-            'category_id'         => $validated['category_id'],
+            'service_category_id' => $validated['service_category_id'],
             'description'         => $validated['description'],
             'budget'              => $validated['budget'],
             'city'                => $validated['city'],
@@ -217,34 +293,28 @@ class ServiceRequestController extends Controller
         $serviceRequest->load('category');
 
         // ── Tiered Notification Logic by Category ──────────────────────────
-        // Get all verified providers in this category
         $providers = User::where('role', 'provider')
             ->where('is_verified_student', true)
             ->whereHas('categories', function($q) use ($serviceRequest) {
-                $q->where('service_categories.id', $serviceRequest->category_id);
+                $q->where('service_categories.id', $serviceRequest->service_category_id);
             })
             ->orderByDesc('average_rating')
             ->orderByDesc('total_votes')
             ->get();
 
-        // Tier 1: Top 10 — notified immediately
         $tier1 = $providers->take(10);
         foreach ($tier1 as $provider) {
             $provider->notify(new NewServiceRequestNotification($serviceRequest, 'top'));
         }
 
-        // Tier 2: The rest — notified after 5 minutes
         $tier1Ids = $tier1->pluck('id')->toArray();
         if ($providers->count() > 10) {
             NotifyRemainingProviders::dispatch($serviceRequest, $tier1Ids)
-                ->delay(now()->addMinutes(5));
+                ->delay(now()->addMinutes(30));
         }
         // ──────────────────────────────────────────────────────────────────
 
-        return response()->json([
-            'message' => 'Mission postée avec succès !',
-            'request' => $serviceRequest
-        ], 201);
+        return ApiResponse::success($serviceRequest->toArray(), 'Mission postée avec succès !', 201);
     }
 
     /**
@@ -254,8 +324,6 @@ class ServiceRequestController extends Controller
     {
         $provider = Auth::user();
 
-        // 1. Available missions (open missions in city & matching provider's categories)
-        // We get the provider's category IDs from the pivot table (provider_services)
         $providerCategoryIds = $provider->categories()->pluck('service_categories.id')->toArray();
 
         $availableMissionsCount = ServiceRequest::where('status', 'open')
@@ -263,23 +331,21 @@ class ServiceRequestController extends Controller
             ->whereIn('service_category_id', $providerCategoryIds)
             ->count();
 
-        // 2. Pending offers (offers by provider on pending/open requests)
         $pendingOffersCount = \App\Models\RequestOffer::where('provider_id', $provider->id)
             ->whereHas('serviceRequest', function($q) {
                 $q->whereIn('status', ['pending', 'open']);
             })
             ->count();
 
-        // 3. Completed missions (missions where this provider was selected and marked completed)
         $completedMissionsCount = ServiceRequest::where('status', 'completed')
             ->where('selected_provider_id', $provider->id)
             ->count();
 
-        return response()->json([
+        return ApiResponse::success([
             'available_missions' => $availableMissionsCount,
             'pending_offers'     => $pendingOffersCount,
             'completed_missions' => $completedMissionsCount,
             'rating'             => $provider->average_rating ?: 0,
-        ]);
+        ], 'Provider stats retrieved');
     }
 }

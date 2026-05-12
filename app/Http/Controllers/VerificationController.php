@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -16,7 +17,7 @@ class VerificationController extends Controller
         $user = Auth::user();
 
         if ($user->role !== 'provider') {
-            return response()->json(['message' => 'Seuls les prestataires peuvent soumettre des documents.'], 403);
+            return ApiResponse::error('Seuls les prestataires peuvent soumettre des documents.', 403);
         }
 
         $request->validate([
@@ -48,12 +49,12 @@ class VerificationController extends Controller
 
         if ($uploaded) {
             $user->save();
-            return response()->json([
-                'message' => 'Documents envoyés avec succès. En attente de validation.',
-                'user' => $user
-            ]);
+            return ApiResponse::success(
+                ['user' => $user],
+                'Documents envoyés avec succès. En attente de validation.'
+            );
         }
 
-        return response()->json(['message' => 'Aucun document n\'a été fourni.'], 400);
+        return ApiResponse::error('Aucun document n\'a été fourni.', 400);
     }
 }

@@ -12,7 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE service_requests MODIFY COLUMN status ENUM('pending', 'provider_selected', 'in_progress', 'completed', 'cancelled', 'open') NOT NULL DEFAULT 'open'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE service_requests MODIFY COLUMN status ENUM('pending', 'provider_selected', 'in_progress', 'completed', 'cancelled', 'open') NOT NULL DEFAULT 'open'");
+        }
     }
 
     /**
@@ -20,8 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('service_requests', function (Blueprint $table) {
-            //
-        });
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE service_requests MODIFY COLUMN status ENUM('pending', 'provider_selected', 'in_progress', 'completed', 'cancelled') NOT NULL DEFAULT 'pending'");
+        }
     }
 };
