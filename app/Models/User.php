@@ -6,9 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
-
-use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\HasApiTokens;     
 
 class User extends Authenticatable
 {
@@ -46,6 +44,25 @@ class User extends Authenticatable
         'total_votes',
         'average_rating',
     ];
+
+    /**
+     * The attributes that should be appends for serialization.
+     *
+     * @var list<string>
+     */
+    protected $appends = ['avatar_url'];
+
+    public function getAvatarUrlAttribute()
+    {
+        if ($this->avatar) {
+            if (filter_var($this->avatar, FILTER_VALIDATE_URL)) {
+                return $this->avatar;
+            }
+            return asset('storage/' . $this->avatar);
+        }
+
+        return null;
+    }
 
     /**
      * The attributes that should be hidden for serialization.

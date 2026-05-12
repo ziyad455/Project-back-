@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\ServiceRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -200,5 +201,30 @@ class UserController extends Controller
         $user->update(['whatsapp_number' => $validated['whatsapp_number']]);
 
         return response()->json(['message' => 'Numéro ajouté avec succès', 'user' => $user]);
+    }
+
+    /**
+     * Update the authenticated user's avatar.
+     */
+    public function updateAvatar(Request $request)
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        $user = Auth::user();
+
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->update(['avatar' => $path]);
+
+        return response()->json([
+            'message' => 'Photo de profil mise à jour',
+            'avatar_url' => $user->avatar_url,
+            'user' => $user
+        ]);
     }
 }
