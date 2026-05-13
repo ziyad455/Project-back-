@@ -162,7 +162,7 @@ class AdminController extends Controller
         $missions = \App\Models\ServiceRequest::with([
             'category',
             'client',
-            'selected_provider',
+            'selectedProvider',
             'review'
         ])
             ->select([
