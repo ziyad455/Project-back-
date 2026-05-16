@@ -14,7 +14,7 @@ class AuthTest extends TestCase
 
     public function test_user_can_register()
     {
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/auth/register', [
             'first_name' => 'John',
             'last_name' => 'Doe',
             'email' => 'john@example.com',
@@ -42,7 +42,7 @@ class AuthTest extends TestCase
 
     public function test_client_registration_ignores_provider_role()
     {
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/auth/register', [
             'first_name' => 'Jane',
             'last_name' => 'Client',
             'email' => 'jane@example.com',
@@ -64,7 +64,7 @@ class AuthTest extends TestCase
     {
         Storage::fake('public');
 
-        $response = $this->post('/api/register/talent', [
+        $response = $this->post('/api/auth/register/talent', [
             'first_name' => 'Sara',
             'last_name' => 'Talent',
             'email' => 'sara@example.com',
@@ -98,7 +98,7 @@ class AuthTest extends TestCase
             'password' => bcrypt('secret123')
         ]);
 
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'login@example.com',
             'password' => 'secret123',
         ]);
@@ -144,7 +144,7 @@ class AuthTest extends TestCase
 
         $response = $this->withHeaders([
             'Authorization' => 'Bearer ' . $token,
-        ])->postJson('/api/logout');
+        ])->postJson('/api/auth/logout');
 
         $response->assertStatus(200)
                  ->assertJson([

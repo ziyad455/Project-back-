@@ -21,7 +21,7 @@ class ServiceRequestTest extends TestCase
             'city' => 'Marrakech',
             'service_category_id' => $category->id,
             'description' => 'Fix my sink',
-            'proposed_price' => 200,
+            'budget' => 200,
         ]);
 
         $response->assertStatus(201);
@@ -42,11 +42,11 @@ class ServiceRequestTest extends TestCase
             'city' => 'Marrakech',
             'service_category_id' => $category->id,
             'description' => 'Fix my sink',
-            'proposed_price' => 200,
+            'budget' => 200,
         ]);
 
         $response->assertStatus(201);
-        $response->assertJsonMissingPath('guest_whatsapp_number');
+        $response->assertJsonMissingPath('data.guest_whatsapp_number');
 
         $this->assertDatabaseHas('service_requests', [
             'client_id' => null,
@@ -66,7 +66,7 @@ class ServiceRequestTest extends TestCase
             'city' => 'Marrakech',
             'service_category_id' => $category->id,
             'description' => 'Fix my sink',
-            'proposed_price' => 200,
+            'budget' => 200,
             'status' => 'pending',
         ]);
 
@@ -92,7 +92,7 @@ class ServiceRequestTest extends TestCase
             'city' => 'Marrakech',
             'service_category_id' => $category->id,
             'description' => 'Fix my sink',
-            'proposed_price' => 200,
+            'budget' => 200,
             'status' => 'pending',
         ]);
 
@@ -105,8 +105,8 @@ class ServiceRequestTest extends TestCase
         $response = $this->actingAs($provider, 'sanctum')->getJson('/api/offers/my');
 
         $response->assertStatus(200)
-            ->assertJsonPath('0.provider_id', $provider->id)
-            ->assertJsonPath('0.service_request.category.name', 'Plumbing');
+            ->assertJsonPath('data.0.provider_id', $provider->id)
+            ->assertJsonPath('data.0.service_request.category.name', 'Plumbing');
     }
 
     public function test_provider_can_view_talent_stats()
@@ -126,16 +126,16 @@ class ServiceRequestTest extends TestCase
             'city' => 'Marrakech',
             'service_category_id' => $category->id,
             'description' => 'Fix my sink',
-            'proposed_price' => 200,
+            'budget' => 200,
             'status' => 'pending',
         ]);
 
         $response = $this->actingAs($provider, 'sanctum')->getJson('/api/talent/stats');
 
         $response->assertStatus(200)
-            ->assertJsonPath('completed_jobs', 2)
-            ->assertJsonPath('open_requests', 1)
-            ->assertJsonPath('is_verified_student', true);
+            ->assertJsonPath('data.completed_jobs', 2)
+            ->assertJsonPath('data.open_requests', 1)
+            ->assertJsonPath('data.is_verified_student', true);
     }
 
     public function test_unverified_provider_cannot_place_offer()
@@ -148,7 +148,7 @@ class ServiceRequestTest extends TestCase
             'city' => 'Marrakech',
             'service_category_id' => $category->id,
             'description' => 'Fix my sink',
-            'proposed_price' => 200,
+            'budget' => 200,
             'status' => 'pending',
         ]);
 
@@ -159,7 +159,7 @@ class ServiceRequestTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_client_can_accept_offer()
+    public function test_talent_can_accept_mission()
     {
         $client = User::factory()->create(['role' => 'client']);
         $provider = User::factory()->create(['role' => 'provider', 'is_verified_student' => true]);
@@ -169,22 +169,75 @@ class ServiceRequestTest extends TestCase
             'city' => 'Marrakech',
             'service_category_id' => $category->id,
             'description' => 'Fix my sink',
-            'proposed_price' => 200,
+            'budget' => 200,
             'status' => 'pending',
         ]);
-        
-        $offer = $request->offers()->create([
+
+        $response = $this->actingAs($provider, 'sanctum')->postJson("/api/requests/{$request->id}/offers", [
+            'message' => 'I can do this',
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('request_offers', [
+            'service_request_id' => $request->id,
             'provider_id' => $provider->id,
-            'offered_price' => 250,
-            'status' => 'pending',
+            'status' => 'accepted',
         ]);
-
-        $response = $this->actingAs($client, 'sanctum')->postJson("/api/offers/{$offer->id}/accept");
-
-        $response->assertStatus(200);
-        $this->assertEquals('accepted', $offer->fresh()->status);
         $this->assertEquals('in_progress', $request->fresh()->status);
         $this->assertEquals($provider->id, $request->fresh()->selected_provider_id);
+    }
+
+    public function test_talent_can_refuse_mission()
+    {
+        $client = User::factory()->create(['role' => 'client']);
+        $provider = User::factory()->create(['role' => 'provider', 'is_verified_student' => true]);
+        $category = ServiceCategory::create(['name' => 'Plumbing']);
+        $request = ServiceRequest::create([
+            'client_id' => $client->id,
+            'city' => 'Marrakech',
+            'service_category_id' => $category->id,
+            'description' => 'Fix my sink',
+            'budget' => 200,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($provider, 'sanctum')->postJson("/api/requests/{$request->id}/refuse", [
+            'message' => 'Too far for me',
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertDatabaseHas('request_offers', [
+            'service_request_id' => $request->id,
+            'provider_id' => $provider->id,
+            'status' => 'refused',
+        ]);
+        $this->assertEquals('pending', $request->fresh()->status);
+    }
+
+    public function test_second_talent_cannot_accept_already_accepted_mission()
+    {
+        $client = User::factory()->create(['role' => 'client']);
+        $provider1 = User::factory()->create(['role' => 'provider', 'is_verified_student' => true]);
+        $provider2 = User::factory()->create(['role' => 'provider', 'is_verified_student' => true]);
+        $category = ServiceCategory::create(['name' => 'Plumbing']);
+        $request = ServiceRequest::create([
+            'client_id' => $client->id,
+            'city' => 'Marrakech',
+            'service_category_id' => $category->id,
+            'description' => 'Fix my sink',
+            'budget' => 200,
+            'status' => 'pending',
+        ]);
+
+        // First talent accepts
+        $this->actingAs($provider1, 'sanctum')->postJson("/api/requests/{$request->id}/offers");
+
+        // Second talent tries to accept
+        $response = $this->actingAs($provider2, 'sanctum')->postJson("/api/requests/{$request->id}/offers");
+
+        $response->assertStatus(409);
+        $response->assertJsonFragment(['message' => 'This mission has already been accepted by another talent']);
+        $this->assertEquals($provider1->id, $request->fresh()->selected_provider_id);
     }
 
     public function test_public_provider_payload_does_not_expose_whatsapp()
@@ -198,10 +251,36 @@ class ServiceRequestTest extends TestCase
         $response = $this->getJson('/api/providers');
 
         $response->assertStatus(200)
-            ->assertJsonMissingPath('0.whatsapp_number');
+            ->assertJsonMissingPath('data.0.whatsapp_number');
     }
 
     public function test_authenticated_client_can_reveal_provider_whatsapp()
+    {
+        $client = User::factory()->create(['role' => 'client', 'whatsapp_number' => '0600000001']);
+        $provider = User::factory()->create([
+            'role' => 'provider',
+            'is_verified_student' => true,
+        ]);
+        $category = ServiceCategory::create(['name' => 'Plumbing']);
+        $serviceRequest = ServiceRequest::create([
+            'client_id' => $client->id,
+            'city' => 'Marrakech',
+            'service_category_id' => $category->id,
+            'description' => 'Fix my sink',
+            'budget' => 200,
+            'status' => 'in_progress',
+            'selected_provider_id' => $provider->id,
+        ]);
+
+        // Selected provider can view client's whatsapp via client-contact
+        $response = $this->actingAs($provider, 'sanctum')
+            ->getJson("/api/requests/{$serviceRequest->id}/client-contact");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.whatsapp_number', '0600000001');
+    }
+
+    public function test_guest_cannot_reveal_provider_whatsapp()
     {
         $client = User::factory()->create(['role' => 'client']);
         $provider = User::factory()->create([
@@ -209,22 +288,19 @@ class ServiceRequestTest extends TestCase
             'is_verified_student' => true,
             'whatsapp_number' => '0600000002',
         ]);
-
-        $response = $this->actingAs($client, 'sanctum')->getJson("/api/providers/{$provider->id}/contact");
-
-        $response->assertStatus(200)
-            ->assertJsonPath('whatsapp_number', '0600000002');
-    }
-
-    public function test_guest_cannot_reveal_provider_whatsapp()
-    {
-        $provider = User::factory()->create([
-            'role' => 'provider',
-            'is_verified_student' => true,
-            'whatsapp_number' => '0600000002',
+        $category = ServiceCategory::create(['name' => 'Plumbing']);
+        $serviceRequest = ServiceRequest::create([
+            'client_id' => $client->id,
+            'city' => 'Marrakech',
+            'service_category_id' => $category->id,
+            'description' => 'Fix my sink',
+            'budget' => 200,
+            'status' => 'in_progress',
+            'selected_provider_id' => $provider->id,
         ]);
 
-        $response = $this->getJson("/api/providers/{$provider->id}/contact");
+        // Unauthenticated user cannot access client-contact
+        $response = $this->getJson("/api/requests/{$serviceRequest->id}/client-contact");
 
         $response->assertStatus(401);
     }

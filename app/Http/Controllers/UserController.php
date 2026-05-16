@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\ServiceRequest;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -22,11 +23,9 @@ class UserController extends Controller
         }
 
         if ($request->has('is_verified')) {
-            // Mapping is_verified to is_verified_student for providers
             $query->where('is_verified_student', $request->is_verified == '1');
         }
 
-        // Search logic similar to providers method
         if ($request->has('search')) {
             $term = '%' . $request->search . '%';
             $query->where(function ($q) use ($term) {
@@ -44,7 +43,7 @@ class UserController extends Controller
             ->orderByDesc('average_rating')
             ->get();
 
-        return response()->json($users);
+        return ApiResponse::success($users->toArray(), 'Users retrieved');
     }
 
     /**
@@ -81,7 +80,7 @@ class UserController extends Controller
             });
         }
 
-        return response()->json($query->get());
+        return ApiResponse::success($query->get()->toArray(), 'Providers retrieved');
     }
 
     /**
@@ -100,29 +99,17 @@ class UserController extends Controller
             ])
             ->firstOrFail();
 
-        return response()->json($user);
+        return ApiResponse::success($user->toArray(), 'Provider retrieved');
     }
 
     /**
-     * Reveal a provider's WhatsApp number to authenticated clients only.
+     * DEPRECATED: Direct provider contact has been removed.
+     * Talents now contact clients via the mission-based WhatsApp flow.
+     * @see ServiceRequestController::clientContact()
      */
     public function contact(Request $request, $id)
     {
-        if ($request->user()->role !== 'client') {
-            return response()->json(['message' => 'Only authenticated clients can contact talents'], 403);
-        }
-
-        $provider = User::where('id', $id)
-            ->where('role', 'provider')
-            ->where('is_verified_student', true)
-            ->select(['id', 'first_name', 'last_name', 'whatsapp_number'])
-            ->firstOrFail();
-
-        return response()->json([
-            'provider_id' => $provider->id,
-            'name' => trim($provider->first_name.' '.$provider->last_name),
-            'whatsapp_number' => $provider->whatsapp_number,
-        ]);
+        return ApiResponse::error('Direct contact is not available. Accept a mission to contact the client.', 403);
     }
 
     /**
@@ -130,7 +117,10 @@ class UserController extends Controller
      */
     public function myProfile()
     {
-        return response()->json(Auth::user());
+        return ApiResponse::success(
+            Auth::user()->toArray(),
+            'Profile retrieved'
+        );
     }
 
     /**
@@ -141,7 +131,7 @@ class UserController extends Controller
         $user = $request->user();
 
         if ($user->role !== 'provider') {
-            return response()->json(['message' => 'Only talents can view talent stats'], 403);
+            return ApiResponse::error('Only talents can view talent stats', 403);
         }
 
         $openRequestsQuery = ServiceRequest::where('status', 'pending');
@@ -150,7 +140,7 @@ class UserController extends Controller
             $openRequestsQuery->where('city', $user->city);
         }
 
-        return response()->json([
+        return ApiResponse::success([
             'completed_jobs' => $user->completed_jobs ?? 0,
             'average_rating' => $user->average_rating ?? 0,
             'total_votes' => $user->total_votes ?? 0,
@@ -158,7 +148,7 @@ class UserController extends Controller
             'submitted_offers' => $user->offers()->count(),
             'accepted_offers' => $user->offers()->where('status', 'accepted')->count(),
             'is_verified_student' => (bool) $user->is_verified_student,
-        ]);
+        ], 'Talent stats retrieved');
     }
 
     /**
@@ -184,7 +174,10 @@ class UserController extends Controller
 
         $user->update($validated);
 
-        return response()->json(['message' => 'Profil mis à jour avec succès', 'user' => $user]);
+        return ApiResponse::success(
+            $user->toArray(),
+            'Profil mis à jour avec succès'
+        );
     }
 
     /**
@@ -200,7 +193,10 @@ class UserController extends Controller
 
         $user->update(['whatsapp_number' => $validated['whatsapp_number']]);
 
-        return response()->json(['message' => 'Numéro ajouté avec succès', 'user' => $user]);
+        return ApiResponse::success(
+            $user->toArray(),
+            'Numéro ajouté avec succès'
+        );
     }
 
     /**

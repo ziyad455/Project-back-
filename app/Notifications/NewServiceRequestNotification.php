@@ -52,7 +52,7 @@ class NewServiceRequestNotification extends Notification implements ShouldQueue
             ->when($this->serviceRequest->description, fn($mail) =>
                 $mail->line("Description : " . \Str::limit($this->serviceRequest->description, 200))
             )
-            ->action('Voir la mission sur AjiKhdam', url("/requests/{$this->serviceRequest->id}"))
+            ->action('Voir la mission sur AjiKhdam', url('/talent/requests'))
             ->line('Connectez-vous à votre tableau de bord pour envoyer votre offre.')
             ->salutation('À très bientôt — L\'équipe AjiKhdam 🇲🇦');
     }

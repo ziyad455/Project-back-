@@ -28,6 +28,11 @@ final class AuthService
             $documentPath = $data['document_student_proof']->store('student_proofs', 'public');
         }
 
+        $idCardPath = null;
+        if (isset($data['document_id_card']) && $data['document_id_card'] instanceof \Illuminate\Http\UploadedFile) {
+            $idCardPath = $data['document_id_card']->store('student_proofs', 'public');
+        }
+
         $user = User::create([
             'first_name' => $firstName,
             'last_name' => $lastName,
@@ -37,12 +42,13 @@ final class AuthService
             'city' => $data['city'] ?? null,
             'role' => $data['role'],
             'bio' => $data['bio'] ?? null,
-            'hourly_rate' => $data['hourly_rate'] ?? null,
+
             'university' => $data['university'] ?? null,
             'field_of_study' => $data['field_of_study'] ?? null,
             'portfolio_url' => $data['portfolio_url'] ?? null,
             'skills' => $skills,
             'document_student_proof' => $documentPath,
+            'document_id_card' => $idCardPath,
         ]);
 
         return $user->refresh();

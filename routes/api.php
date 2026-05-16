@@ -20,11 +20,6 @@ Route::prefix('auth')->group(function (): void {
     Route::get('/google/callback', [\App\Http\Controllers\Api\Auth\GoogleAuthController::class, 'callback']);
 });
 
-// For backward compatibility if needed
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/register/talent', [AuthController::class, 'registerTalent']);
-Route::post('/login', [AuthController::class, 'login']);
-
 // Public discovery routes (no auth required)
 Route::get('/categories', [ServiceCategoryController::class, 'index']);
 Route::get('/users', [UserController::class, 'index']);
@@ -40,8 +35,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/user', [AuthController::class, 'user']);
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/me', [AuthController::class, 'user']);
 
     // Own profile
     Route::get('/profile', [UserController::class, 'myProfile']);
@@ -53,16 +46,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/requests', [ServiceRequestController::class, 'index']);
     Route::get('/requests/my', [ServiceRequestController::class, 'myRequests']);
     Route::get('/requests/{serviceRequest}', [ServiceRequestController::class, 'show']);
+    Route::get('/requests/{serviceRequest}/client-contact', [ServiceRequestController::class, 'clientContact']);
     Route::post('/requests/{serviceRequest}/complete', [ServiceRequestController::class, 'complete']);
 
-    // Offers
+    // Offers (talent self-selection)
     Route::get('/offers/my', [RequestOfferController::class, 'myOffers']);
     Route::post('/requests/{serviceRequest}/offers', [RequestOfferController::class, 'store']);
-    Route::post('/offers/{requestOffer}/accept', [RequestOfferController::class, 'accept']);
+    Route::post('/requests/{serviceRequest}/refuse', [RequestOfferController::class, 'refuse']);
+    // Route::post('/offers/{requestOffer}/accept', [RequestOfferController::class, 'accept']); // DEPRECATED — clients no longer accept offers
 
     // Reviews
     Route::post('/requests/{serviceRequest}/reviews', [ReviewController::class, 'store']);
-    Route::get('/providers/{id}/contact', [UserController::class, 'contact']);
+    // DEPRECATED: Direct provider contact removed — use /requests/{id}/client-contact instead
+    // Route::get('/providers/{id}/contact', [UserController::class, 'contact']);
 
     // Notifications
     Route::get('/notifications', fn() => response()->json(auth()->user()->notifications));
@@ -85,5 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/all-missions', [AdminController::class, 'allMissions']);
         Route::delete('/mission/{id}', [AdminController::class, 'deleteMission']);
         Route::get('/stats', [AdminController::class, 'platformStats']);
+        Route::get('/all-clients', [AdminController::class, 'allClients']);
+        Route::delete('/client/{id}', [AdminController::class, 'deleteClient']);
     });
 });

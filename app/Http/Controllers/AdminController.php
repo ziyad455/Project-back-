@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\ApiResponse;
 use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
@@ -10,7 +11,7 @@ class AdminController extends Controller
     public function pendingCount()
     {
         if (!auth()->user()->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return ApiResponse::error('Unauthorized', 403);
         }
 
         $count = User::where('role', 'provider')
@@ -21,13 +22,13 @@ class AdminController extends Controller
             })
             ->count();
 
-        return response()->json(['count' => $count]);
+        return ApiResponse::success(['count' => $count], 'Pending count retrieved');
     }
 
     public function allProviders()
     {
         if (!auth()->user()->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return ApiResponse::error('Unauthorized', 403);
         }
 
         $providers = User::where('role', 'provider')
@@ -40,7 +41,7 @@ class AdminController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json($providers);
+        return ApiResponse::success($providers->toArray(), 'Providers retrieved');
     }
 
     /**
@@ -49,7 +50,7 @@ class AdminController extends Controller
     public function pendingProviders()
     {
         if (!auth()->user()->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return ApiResponse::error('Unauthorized', 403);
         }
 
         $providers = User::where('role', 'provider')
@@ -67,7 +68,7 @@ class AdminController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
-        return response()->json($providers);
+        return ApiResponse::success($providers->toArray(), 'Pending providers retrieved');
     }
 
     /**
@@ -76,11 +77,11 @@ class AdminController extends Controller
     public function showProviderDocument(User $provider, string $document)
     {
         if (!auth()->user()->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return ApiResponse::error('Unauthorized', 403);
         }
 
         if ($provider->role !== 'provider') {
-            return response()->json(['message' => 'Document introuvable.'], 404);
+            return ApiResponse::error('Document introuvable.', 404);
         }
 
         $path = match ($document) {
@@ -90,7 +91,7 @@ class AdminController extends Controller
         };
 
         if (!$path || !Storage::disk('public')->exists($path)) {
-            return response()->json(['message' => 'Document introuvable.'], 404);
+            return ApiResponse::error('Document introuvable.', 404);
         }
 
         $disk = Storage::disk('public');
@@ -108,7 +109,7 @@ class AdminController extends Controller
     public function verifyProvider($id)
     {
         if (!auth()->user()->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return ApiResponse::error('Unauthorized', 403);
         }
 
         $provider = User::where('role', 'provider')->findOrFail($id);
@@ -116,10 +117,10 @@ class AdminController extends Controller
         $provider->is_verified_student = true;
         $provider->save();
 
-        return response()->json([
-            'message' => 'Prestataire approuvé avec succès.',
-            'provider' => $provider
-        ]);
+        return ApiResponse::success(
+            $provider->toArray(),
+            'Prestataire approuvé avec succès.'
+        );
     }
 
     /**
@@ -129,7 +130,7 @@ class AdminController extends Controller
     public function rejectProvider($id)
     {
         if (!auth()->user()->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return ApiResponse::error('Unauthorized', 403);
         }
 
         $provider = User::where('role', 'provider')->findOrFail($id);
@@ -146,9 +147,7 @@ class AdminController extends Controller
         $provider->document_student_proof = null;
         $provider->save();
 
-        return response()->json([
-            'message' => 'Documents rejetés. Le prestataire doit les soumettre à nouveau.'
-        ]);
+        return ApiResponse::success([], 'Documents rejetés. Le prestataire doit les soumettre à nouveau.');
     }
 
     /**
@@ -157,15 +156,24 @@ class AdminController extends Controller
     public function allMissions()
     {
         if (!auth()->user()->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return ApiResponse::error('Unauthorized', 403);
         }
 
-        $missions = \App\Models\ServiceRequest::with(['category'])
-            ->select(['id', 'title', 'client_name', 'city', 'status', 'budget', 'service_category_id', 'created_at'])
+        $missions = \App\Models\ServiceRequest::with([
+            'category',
+            'client',
+            'selectedProvider',
+            'review'
+        ])
+            ->select([
+                'id', 'title', 'client_id', 'client_name', 'city', 'status', 
+                'budget', 'service_category_id', 'selected_provider_id', 
+                'deadline', 'created_at', 'updated_at'
+            ])
             ->latest()
             ->get();
 
-        return response()->json($missions);
+        return ApiResponse::success($missions->toArray(), 'Missions retrieved');
     }
 
     /**
@@ -174,10 +182,10 @@ class AdminController extends Controller
     public function deleteMission($id)
     {
         if (!auth()->user()->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return ApiResponse::error('Unauthorized', 403);
         }
         \App\Models\ServiceRequest::findOrFail($id)->delete();
-        return response()->json(['message' => 'Mission supprimée.']);
+        return ApiResponse::success([], 'Mission supprimée.');
     }
 
     /**
@@ -186,10 +194,42 @@ class AdminController extends Controller
     public function deleteProvider($id)
     {
         if (!auth()->user()->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return ApiResponse::error('Unauthorized', 403);
         }
         User::where('role', 'provider')->findOrFail($id)->delete();
-        return response()->json(['message' => 'Talent supprimé.']);
+        return ApiResponse::success([], 'Talent supprimé.');
+    }
+
+    /**
+     * List all clients (admin).
+     */
+    public function allClients()
+    {
+        if (!auth()->user()->is_admin) {
+            return ApiResponse::error('Unauthorized', 403);
+        }
+
+        $clients = User::where('role', 'client')
+            ->select([
+                'id', 'first_name', 'last_name', 'email', 'city',
+                'whatsapp_number', 'created_at',
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return ApiResponse::success($clients->toArray(), 'Clients retrieved');
+    }
+
+    /**
+     * Delete/ban a client (admin).
+     */
+    public function deleteClient($id)
+    {
+        if (!auth()->user()->is_admin) {
+            return ApiResponse::error('Unauthorized', 403);
+        }
+        User::where('role', 'client')->findOrFail($id)->delete();
+        return ApiResponse::success([], 'Client supprimé.');
     }
 
     /**
@@ -198,16 +238,16 @@ class AdminController extends Controller
     public function platformStats()
     {
         if (!auth()->user()->is_admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return ApiResponse::error('Unauthorized', 403);
         }
 
-        return response()->json([
+        return ApiResponse::success([
             'total_verified'   => User::where('role', 'provider')->where('is_verified_student', true)->count(),
             'total_pending'    => User::where('role', 'provider')->where('is_verified_student', false)
                                       ->where(fn($q) => $q->whereNotNull('document_id_card')->orWhereNotNull('document_student_proof'))
                                       ->count(),
             'open_missions'    => \App\Models\ServiceRequest::where('status', 'open')->count(),
             'total_offers'     => \App\Models\RequestOffer::count(),
-        ]);
+        ], 'Platform stats retrieved');
     }
 }
