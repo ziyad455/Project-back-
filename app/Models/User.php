@@ -6,7 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -26,6 +26,7 @@ class User extends Authenticatable
         'password',
         'google_id',
         'avatar',
+        'cover_image',
         'whatsapp_number',
         'city',
         'role',
@@ -56,6 +57,11 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    protected $appends = [
+        'avatar_url',
+        'cover_image_url',
+    ];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -70,6 +76,29 @@ class User extends Authenticatable
             'is_admin' => 'boolean',
             'is_verified_student' => 'boolean',
         ];
+    }
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->publicImageUrl($this->avatar);
+    }
+
+    public function getCoverImageUrlAttribute(): ?string
+    {
+        return $this->publicImageUrl($this->cover_image);
+    }
+
+    private function publicImageUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        if (filter_var($path, FILTER_VALIDATE_URL) || str_starts_with($path, '/')) {
+            return $path;
+        }
+
+        return Storage::disk('public')->url($path);
     }
 
     public function serviceRequests()

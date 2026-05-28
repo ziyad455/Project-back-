@@ -7,6 +7,7 @@ use App\Models\ServiceRequest;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -36,7 +37,7 @@ class UserController extends Controller
         }
 
         $users = $query->select([
-                'id', 'first_name', 'last_name', 'title', 'city', 'avatar',
+                'id', 'first_name', 'last_name', 'title', 'city', 'avatar', 'cover_image',
                 'bio', 'skills', 'average_rating', 'total_votes'
             ])
             ->orderByDesc('average_rating')
@@ -53,7 +54,7 @@ class UserController extends Controller
         $query = User::where('role', 'provider')
             ->where('is_verified_student', true)
             ->select([
-                'id', 'first_name', 'last_name', 'title', 'city', 'avatar',
+                'id', 'first_name', 'last_name', 'title', 'city', 'avatar', 'cover_image',
                 'bio', 'skills', 'hourly_rate', 'average_rating', 'is_verified_student',
                 'total_votes', 'completed_jobs', 'job_success_rate',
                 'portfolio_url', 'university', 'field_of_study'
@@ -91,7 +92,7 @@ class UserController extends Controller
             ->where('role', 'provider')
             ->where('is_verified_student', true)
             ->select([
-                'id', 'first_name', 'last_name', 'title', 'city', 'avatar',
+                'id', 'first_name', 'last_name', 'title', 'city', 'avatar', 'cover_image',
                 'bio', 'skills', 'hourly_rate', 'average_rating', 'is_verified_student',
                 'total_votes', 'completed_jobs', 'job_success_rate',
                 'portfolio_url', 'university', 'field_of_study'
@@ -177,6 +178,66 @@ class UserController extends Controller
             $user->toArray(),
             'Profil mis à jour avec succès'
         );
+    }
+
+    /**
+     * Update the authenticated user's profile photo.
+     */
+    public function updateAvatar(Request $request)
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpg,jpeg,png,webp|max:4096',
+        ]);
+
+        $user = $request->user();
+        $path = $request->file('avatar')->store('users/avatars', 'public');
+
+        $this->deletePublicImage($user->avatar);
+
+        $user->update(['avatar' => $path]);
+
+        return ApiResponse::success(
+            $user->fresh()->toArray(),
+            'Photo de profil mise à jour'
+        );
+    }
+
+    /**
+     * Update the authenticated provider's marketplace thumbnail / cover image.
+     */
+    public function updateCoverImage(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'provider') {
+            return ApiResponse::error('Seuls les talents peuvent ajouter une couverture.', 403);
+        }
+
+        $request->validate([
+            'cover_image' => 'required|image|mimes:jpg,jpeg,png,webp|max:6144',
+        ]);
+
+        $path = $request->file('cover_image')->store('users/covers', 'public');
+
+        $this->deletePublicImage($user->cover_image);
+
+        $user->update(['cover_image' => $path]);
+
+        return ApiResponse::success(
+            $user->fresh()->toArray(),
+            'Image de couverture mise à jour'
+        );
+    }
+
+    private function deletePublicImage(?string $path): void
+    {
+        if (! $path || filter_var($path, FILTER_VALIDATE_URL) || str_starts_with($path, '/')) {
+            return;
+        }
+
+        if (Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
     }
 
     /**
