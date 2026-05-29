@@ -1,0 +1,34 @@
+import React from 'react';
+import { cn } from '../../lib/cn';
+
+const STATUS_LABELS = {
+  pending: 'En attente',
+  open: 'Ouverte',
+  provider_selected: 'Talent choisi',
+  in_progress: 'En cours',
+  completed: 'Terminée',
+  cancelled: 'Annulée',
+  accepted: 'Acceptée',
+  rejected: 'Rejetée',
+  refused: 'Refusée',
+};
+
+const STATUS_CLASSES = {
+  pending: 'bg-warning-bg text-warning',
+  open: 'bg-blue-light text-primary',
+  provider_selected: 'bg-blue-light text-primary',
+  in_progress: 'bg-blue-light text-primary',
+  completed: 'bg-success-bg text-success',
+  cancelled: 'bg-gray-100 text-gray-600',
+  accepted: 'bg-success-bg text-success',
+  rejected: 'bg-gray-100 text-gray-600',
+  refused: 'bg-gray-100 text-gray-600',
+};
+
+export default function StatusBadge({ status, className }) {
+  return (
+    <span className={cn('inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold', STATUS_CLASSES[status] ?? STATUS_CLASSES.cancelled, className)}>
+      {STATUS_LABELS[status] ?? status ?? 'Inconnu'}
+    </span>
+  );
+}
