@@ -15,6 +15,12 @@ Route::prefix('auth')->group(function (): void {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/register/talent', [AuthController::class, 'registerTalent']);
     Route::post('/login', [AuthController::class, 'login']);
+    // OTP routes
+    Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
+    Route::post('/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:3,1');
+    // Password reset routes
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:3,1');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
     // Google OAuth
     Route::get('/google/redirect', [\App\Http\Controllers\Api\Auth\GoogleAuthController::class, 'redirect']);
     Route::get('/google/callback', [\App\Http\Controllers\Api\Auth\GoogleAuthController::class, 'callback']);
