@@ -12,6 +12,6 @@ class ServiceCategoryController extends Controller
      */
     public function index()
     {
-        return response()->json(ServiceCategory::all());
+        return response()->json(ServiceCategory::with('translations')->get());
     }
 }
