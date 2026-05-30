@@ -20,7 +20,8 @@ class NotifyRemainingProviders implements ShouldQueue
      */
     public function __construct(
         public readonly ServiceRequest $serviceRequest,
-        public readonly array $excludedProviderIds
+        public readonly array $excludedProviderIds,
+        public readonly string $locale = 'fr'
     ) {}
 
     /**
@@ -41,7 +42,7 @@ class NotifyRemainingProviders implements ShouldQueue
             ->get();
 
         foreach ($remainingProviders as $provider) {
-            $provider->notify(new NewServiceRequestNotification($this->serviceRequest, 'others'));
+            $provider->notify(new NewServiceRequestNotification($this->serviceRequest, 'others', $this->locale));
         }
     }
 }

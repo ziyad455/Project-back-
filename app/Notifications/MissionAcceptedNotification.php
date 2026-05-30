@@ -15,37 +15,29 @@ class MissionAcceptedNotification extends Notification implements ShouldQueue
 
     public function __construct(
         public readonly ServiceRequest $serviceRequest,
-        public readonly User $talent
+        public readonly User $talent,
+        public readonly string $locale = 'fr'
     ) {}
 
-    /**
-     * Get the notification's delivery channels.
-     */
     public function via(object $notifiable): array
     {
         return ['database', 'mail'];
     }
 
-    /**
-     * Send as email.
-     */
     public function toMail(object $notifiable): MailMessage
     {
         $title = $this->serviceRequest->title ?? 'Votre mission';
         $talentName = trim($this->talent->first_name . ' ' . $this->talent->last_name);
 
         return (new MailMessage)
-            ->subject("🎉 AjiKhdam — Un talent a accepté votre mission : {$title}")
-            ->greeting("Bonjour {$notifiable->first_name} !")
-            ->line("**{$talentName}** a accepté votre mission **{$title}**.")
-            ->action('Voir les détails de la mission', url("/requests/{$this->serviceRequest->id}"))
-            ->line('Votre mission est maintenant en cours.')
-            ->salutation('À très bientôt — L\'équipe AjiKhdam 🇲🇦');
+            ->subject(__('messages.email_accepted_subject', ['title' => $title], $this->locale))
+            ->greeting(__('messages.email_greeting', ['name' => $notifiable->first_name], $this->locale))
+            ->line(__('messages.email_accepted_body', ['talent' => $talentName, 'title' => $title], $this->locale))
+            ->action(__('messages.email_accepted_action', [], $this->locale), url("/requests/{$this->serviceRequest->id}"))
+            ->line(__('messages.email_accepted_footer', [], $this->locale))
+            ->salutation(__('messages.email_salutation', [], $this->locale));
     }
 
-    /**
-     * Get the array representation of the notification.
-     */
     public function toArray(object $notifiable): array
     {
         $title = $this->serviceRequest->title ?? 'Votre mission';
@@ -53,9 +45,9 @@ class MissionAcceptedNotification extends Notification implements ShouldQueue
 
         return [
             'service_request_id' => $this->serviceRequest->id,
-            'title' => $title,
+            'title' => __('messages.notif_accepted_title', ['title' => $title], $this->locale),
             'talent_name' => $talentName,
-            'message' => "Un talent a accepté votre mission : {$title}",
+            'message' => __('messages.notif_accepted_body', ['title' => $title], $this->locale),
         ];
     }
 }

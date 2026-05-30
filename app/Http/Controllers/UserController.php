@@ -16,7 +16,7 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::query();
+        $query = User::with('translations');
 
         if ($request->has('role')) {
             $query->where('role', $request->role);
@@ -51,7 +51,7 @@ class UserController extends Controller
      */
     public function providers(Request $request)
     {
-        $query = User::where('role', 'provider')
+        $query = User::with('translations')->where('role', 'provider')
             ->where('is_verified_student', true)
             ->select([
                 'id', 'first_name', 'last_name', 'title', 'city', 'avatar', 'cover_image',
@@ -88,7 +88,7 @@ class UserController extends Controller
      */
     public function show($id)
     {
-        $user = User::where('id', $id)
+        $user = User::with('translations')->where('id', $id)
             ->where('role', 'provider')
             ->where('is_verified_student', true)
             ->select([
@@ -117,8 +117,10 @@ class UserController extends Controller
      */
     public function myProfile()
     {
+        $user = Auth::user();
+        $user->load('translations');
         return ApiResponse::success(
-            Auth::user()->toArray(),
+            $user->toArray(),
             'Profile retrieved'
         );
     }
@@ -173,10 +175,11 @@ class UserController extends Controller
         ]);
 
         $user->update($validated);
+        $user->load('translations');
 
         return ApiResponse::success(
             $user->toArray(),
-            'Profil mis à jour avec succès'
+            __('messages.profile_updated')
         );
     }
 
@@ -197,8 +200,8 @@ class UserController extends Controller
         $user->update(['avatar' => $path]);
 
         return ApiResponse::success(
-            $user->fresh()->toArray(),
-            'Photo de profil mise à jour'
+            $user->fresh()->load('translations')->toArray(),
+            __('messages.avatar_updated')
         );
     }
 
@@ -210,7 +213,7 @@ class UserController extends Controller
         $user = $request->user();
 
         if ($user->role !== 'provider') {
-            return ApiResponse::error('Seuls les talents peuvent ajouter une couverture.', 403);
+            return ApiResponse::error(__('messages.only_talent_cover'), 403);
         }
 
         $request->validate([
@@ -224,8 +227,8 @@ class UserController extends Controller
         $user->update(['cover_image' => $path]);
 
         return ApiResponse::success(
-            $user->fresh()->toArray(),
-            'Image de couverture mise à jour'
+            $user->fresh()->load('translations')->toArray(),
+            __('messages.cover_updated')
         );
     }
 
@@ -254,8 +257,8 @@ class UserController extends Controller
         $user->update(['whatsapp_number' => $validated['whatsapp_number']]);
 
         return ApiResponse::success(
-            $user->toArray(),
-            'Numéro ajouté avec succès'
+            $user->load('translations')->toArray(),
+            __('messages.phone_updated')
         );
     }
 }

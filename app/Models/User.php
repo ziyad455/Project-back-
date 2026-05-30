@@ -13,6 +13,9 @@ class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+    use \App\Traits\HasTranslations;
+
+    protected $translatable = ['title', 'bio', 'first_name', 'last_name', 'skills', 'city'];
 
     /**
      * The attributes that are mass assignable.
@@ -124,16 +127,5 @@ class User extends Authenticatable
     public function categories()
     {
         return $this->belongsToMany(ServiceCategory::class, 'provider_services', 'user_id', 'service_category_id');
-    }
-
-    /**
-     * Send the password reset notification.
-     *
-     * @param  string  $token
-     * @return void
-     */
-    public function sendPasswordResetNotification($token): void
-    {
-        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
     }
 }

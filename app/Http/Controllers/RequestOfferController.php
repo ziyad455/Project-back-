@@ -24,7 +24,7 @@ class RequestOfferController extends Controller
         }
 
         $offers = $user->offers()
-            ->with(['serviceRequest.category', 'serviceRequest.client'])
+            ->with(['serviceRequest.category.translations', 'serviceRequest.client', 'serviceRequest.translations'])
             ->latest()
             ->get();
 
@@ -97,11 +97,11 @@ class RequestOfferController extends Controller
         // Notify the client (mission owner) if they are a registered user
         $client = $serviceRequest->client;
         if ($client) {
-            $client->notify(new MissionAcceptedNotification($serviceRequest, $user));
+            $client->notify(new MissionAcceptedNotification($serviceRequest, $user, app()->getLocale()));
         }
 
         return ApiResponse::success(
-            $offer->load('serviceRequest')->toArray(),
+            $offer->load('serviceRequest.translations')->toArray(),
             'Mission accepted successfully',
             201
         );
@@ -129,6 +129,6 @@ class RequestOfferController extends Controller
             'status' => 'refused',
         ]);
 
-        return ApiResponse::success($offer->toArray(), 'Mission declined successfully');
+        return ApiResponse::success($offer->load('serviceRequest.translations')->toArray(), 'Mission declined successfully');
     }
 }

@@ -17,7 +17,7 @@ class VerificationController extends Controller
         $user = Auth::user();
 
         if ($user->role !== 'provider') {
-            return ApiResponse::error('Seuls les prestataires peuvent soumettre des documents.', 403);
+            return ApiResponse::error(__('messages.only_providers_submit'), 403);
         }
 
         $request->validate([
@@ -50,11 +50,11 @@ class VerificationController extends Controller
         if ($uploaded) {
             $user->save();
             return ApiResponse::success(
-                ['user' => $user],
-                'Documents envoyés avec succès. En attente de validation.'
+                ['user' => $user->load('translations')],
+                __('messages.documents_submitted')
             );
         }
 
-        return ApiResponse::error('Aucun document n\'a été fourni.', 400);
+        return ApiResponse::error(__('messages.no_documents'), 400);
     }
 }

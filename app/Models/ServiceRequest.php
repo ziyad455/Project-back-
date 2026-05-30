@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ServiceRequest extends Model
 {
+    use \App\Traits\HasTranslations;
+
+    protected $translatable = ['title', 'description', 'city'];
+
     protected $hidden = [
         'guest_email',
         'guest_whatsapp_number',

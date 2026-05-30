@@ -31,7 +31,7 @@ class AdminController extends Controller
             return ApiResponse::error('Unauthorized', 403);
         }
 
-        $providers = User::where('role', 'provider')
+        $providers = User::with('translations')->where('role', 'provider')
             ->select([
                 'id', 'first_name', 'last_name', 'email', 'created_at',
                 'university', 'field_of_study', 'is_verified_student',
@@ -65,6 +65,7 @@ class AdminController extends Controller
                 'university', 'field_of_study', 
                 'document_id_card', 'document_student_proof'
             ])
+            ->with('translations')
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -81,7 +82,7 @@ class AdminController extends Controller
         }
 
         if ($provider->role !== 'provider') {
-            return ApiResponse::error('Document introuvable.', 404);
+            return ApiResponse::error(__('messages.document_not_found'), 404);
         }
 
         $path = match ($document) {
@@ -91,7 +92,7 @@ class AdminController extends Controller
         };
 
         if (!$path || !Storage::disk('public')->exists($path)) {
-            return ApiResponse::error('Document introuvable.', 404);
+            return ApiResponse::error(__('messages.document_not_found'), 404);
         }
 
         $disk = Storage::disk('public');
@@ -118,8 +119,8 @@ class AdminController extends Controller
         $provider->save();
 
         return ApiResponse::success(
-            $provider->toArray(),
-            'Prestataire approuvé avec succès.'
+            $provider->load('translations')->toArray(),
+            __('messages.provider_approved')
         );
     }
 
@@ -147,7 +148,7 @@ class AdminController extends Controller
         $provider->document_student_proof = null;
         $provider->save();
 
-        return ApiResponse::success([], 'Documents rejetés. Le prestataire doit les soumettre à nouveau.');
+        return ApiResponse::success([], __('messages.documents_rejected'));
     }
 
     /**
@@ -160,10 +161,11 @@ class AdminController extends Controller
         }
 
         $missions = \App\Models\ServiceRequest::with([
-            'category',
+            'category.translations',
             'client',
-            'selectedProvider',
-            'review'
+            'selectedProvider.translations',
+            'review.translations',
+            'translations'
         ])
             ->select([
                 'id', 'title', 'client_id', 'client_name', 'city', 'status', 
@@ -185,7 +187,7 @@ class AdminController extends Controller
             return ApiResponse::error('Unauthorized', 403);
         }
         \App\Models\ServiceRequest::findOrFail($id)->delete();
-        return ApiResponse::success([], 'Mission supprimée.');
+        return ApiResponse::success([], __('messages.mission_deleted'));
     }
 
     /**
@@ -197,7 +199,7 @@ class AdminController extends Controller
             return ApiResponse::error('Unauthorized', 403);
         }
         User::where('role', 'provider')->findOrFail($id)->delete();
-        return ApiResponse::success([], 'Talent supprimé.');
+        return ApiResponse::success([], __('messages.talent_deleted'));
     }
 
     /**
@@ -214,6 +216,7 @@ class AdminController extends Controller
                 'id', 'first_name', 'last_name', 'email', 'city',
                 'whatsapp_number', 'created_at',
             ])
+            ->with('translations')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -229,7 +232,7 @@ class AdminController extends Controller
             return ApiResponse::error('Unauthorized', 403);
         }
         User::where('role', 'client')->findOrFail($id)->delete();
-        return ApiResponse::success([], 'Client supprimé.');
+        return ApiResponse::success([], __('messages.client_deleted'));
     }
 
     /**

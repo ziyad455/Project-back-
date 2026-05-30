@@ -12,32 +12,27 @@ class WelcomeGuestNotification extends Notification implements ShouldQueue
     use Queueable;
 
     public function __construct(
-        public readonly string $temporaryPassword
+        public readonly string $temporaryPassword,
+        public readonly string $locale = 'fr'
     ) {}
 
-    /**
-     * Get the notification's delivery channels.
-     */
     public function via(object $notifiable): array
     {
         return ['mail'];
     }
 
-    /**
-     * Send as email.
-     */
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject("🚀 Bienvenue sur AjiKhdam — Votre compte a été créé")
-            ->greeting("Bonjour {$notifiable->first_name} !")
-            ->line("Merci d'avoir posté votre mission sur AjiKhdam.")
-            ->line("Un compte client a été créé pour vous afin de suivre l'avancement de vos demandes.")
-            ->line("**Voici vos identifiants de connexion :**")
-            ->line("- **Email :** {$notifiable->email}")
-            ->line("- **Mot de passe temporaire :** {$this->temporaryPassword}")
-            ->action('Se connecter au tableau de bord', url("/login"))
-            ->line("Nous vous conseillons de modifier votre mot de passe dès votre première connexion.")
-            ->salutation('À très bientôt — L\'équipe AjiKhdam 🇲🇦');
+            ->subject(__('messages.email_welcome_subject', [], $this->locale))
+            ->greeting(__('messages.email_greeting', ['name' => $notifiable->first_name], $this->locale))
+            ->line(__('messages.email_welcome_line1', [], $this->locale))
+            ->line(__('messages.email_welcome_line2', [], $this->locale))
+            ->line(__('messages.email_welcome_credentials', [], $this->locale))
+            ->line(__('messages.email_welcome_email_label', ['email' => $notifiable->email], $this->locale))
+            ->line(__('messages.email_welcome_password_label', ['password' => $this->temporaryPassword], $this->locale))
+            ->action(__('messages.email_welcome_action', [], $this->locale), url("/login"))
+            ->line(__('messages.email_welcome_advice', [], $this->locale))
+            ->salutation(__('messages.email_salutation', [], $this->locale));
     }
 }

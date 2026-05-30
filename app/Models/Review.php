@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Review extends Model
 {
+    use \App\Traits\HasTranslations;
+
+    protected $translatable = ['comment'];
+
     protected $fillable = [
         'service_request_id',
         'reviewer_id',

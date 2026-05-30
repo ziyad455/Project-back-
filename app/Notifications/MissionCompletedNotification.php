@@ -13,20 +13,15 @@ class MissionCompletedNotification extends Notification implements ShouldQueue
     use Queueable;
 
     public function __construct(
-        public readonly ServiceRequest $serviceRequest
+        public readonly ServiceRequest $serviceRequest,
+        public readonly string $locale = 'fr'
     ) {}
 
-    /**
-     * Get the notification's delivery channels.
-     */
     public function via(object $notifiable): array
     {
         return ['database', 'mail'];
     }
 
-    /**
-     * Send as email.
-     */
     public function toMail(object $notifiable): MailMessage
     {
         $title = $this->serviceRequest->title ?? 'Votre mission';
@@ -35,17 +30,14 @@ class MissionCompletedNotification extends Notification implements ShouldQueue
             : 'Le talent';
 
         return (new MailMessage)
-            ->subject("✅ AjiKhdam — Votre mission est terminée : {$title}")
-            ->greeting("Bonjour {$notifiable->first_name} !")
-            ->line("**{$providerName}** a marqué votre mission **{$title}** comme terminée.")
-            ->line('Laissez un avis pour aider les autres clients à choisir ce talent !')
-            ->action('Laisser un avis', url("/requests/{$this->serviceRequest->id}"))
-            ->salutation('À très bientôt — L\'équipe AjiKhdam 🇲🇦');
+            ->subject(__('messages.email_completed_subject', ['title' => $title], $this->locale))
+            ->greeting(__('messages.email_greeting', ['name' => $notifiable->first_name], $this->locale))
+            ->line(__('messages.email_completed_body', ['provider' => $providerName, 'title' => $title], $this->locale))
+            ->line(__('messages.email_completed_review', [], $this->locale))
+            ->action(__('messages.email_completed_action', [], $this->locale), url("/requests/{$this->serviceRequest->id}"))
+            ->salutation(__('messages.email_salutation', [], $this->locale));
     }
 
-    /**
-     * Get the array representation of the notification.
-     */
     public function toArray(object $notifiable): array
     {
         $title = $this->serviceRequest->title ?? 'Votre mission';
@@ -55,9 +47,9 @@ class MissionCompletedNotification extends Notification implements ShouldQueue
 
         return [
             'service_request_id' => $this->serviceRequest->id,
-            'title' => $title,
+            'title' => __('messages.notif_completed_title', ['title' => $title], $this->locale),
             'provider_name' => $providerName,
-            'message' => "Votre mission '{$title}' est terminée ! Laissez un avis au talent.",
+            'message' => __('messages.notif_completed_body', ['title' => $title], $this->locale),
         ];
     }
 }

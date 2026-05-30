@@ -26,7 +26,7 @@ class ServiceRequestController extends Controller
             return ApiResponse::error('Only verified talents can view service requests', 403);
         }
 
-        $query = ServiceRequest::whereIn('status', ['pending', 'open'])->with('category', 'client');
+        $query = ServiceRequest::whereIn('status', ['pending', 'open'])->with('category.translations', 'client', 'translations');
 
         if ($request->has('city')) {
             $query->where('city', $request->city);
@@ -84,7 +84,7 @@ class ServiceRequestController extends Controller
                     'city'       => $validated['city'],
                 ]);
                 
-                $user->notify(new WelcomeGuestNotification($tempPassword));
+                $user->notify(new WelcomeGuestNotification($tempPassword, app()->getLocale()));
             }
             
             $validated['client_id'] = $user->id;
@@ -95,7 +95,7 @@ class ServiceRequestController extends Controller
         }
 
         $serviceRequest = ServiceRequest::create($validated);
-        $serviceRequest->load('category', 'client');
+        $serviceRequest->load('category.translations', 'client', 'translations');
 
         // ── Tiered Notification Logic ──────────────────────────────────────────
         $providers = User::where('role', 'provider')
@@ -107,12 +107,12 @@ class ServiceRequestController extends Controller
 
         $tier1 = $providers->take(10);
         foreach ($tier1 as $provider) {
-            $provider->notify(new NewServiceRequestNotification($serviceRequest, 'top'));
+            $provider->notify(new NewServiceRequestNotification($serviceRequest, 'top', app()->getLocale()));
         }
 
         $tier1Ids = $tier1->pluck('id')->toArray();
         if ($providers->count() > 10) {
-            NotifyRemainingProviders::dispatch($serviceRequest, $tier1Ids)
+            NotifyRemainingProviders::dispatch($serviceRequest, $tier1Ids, app()->getLocale())
                 ->delay(now()->addMinutes(30));
         }
         // ──────────────────────────────────────────────────────────────────────
@@ -137,14 +137,14 @@ class ServiceRequestController extends Controller
             return ApiResponse::error('Unauthorized', 403);
         }
 
-        $loadRelations = ['category', 'client', 'selectedProvider', 'review'];
+        $loadRelations = ['category.translations', 'client', 'selectedProvider.translations', 'review.translations', 'translations'];
 
         if ($canProviderView && ! $isOwner && ! $user->is_admin) {
             $serviceRequest->load(array_merge($loadRelations, [
-                'offers' => fn ($query) => $query->where('provider_id', $user->id)->with('provider'),
+                'offers' => fn ($query) => $query->where('provider_id', $user->id)->with('provider.translations'),
             ]));
         } else {
-            $serviceRequest->load(array_merge($loadRelations, ['offers.provider']));
+            $serviceRequest->load(array_merge($loadRelations, ['offers.provider.translations']));
         }
 
         $responseData = $serviceRequest->toArray();
@@ -200,8 +200,9 @@ class ServiceRequestController extends Controller
         }
 
         $encodedTitle = urlencode($title);
+        $greeting = __('messages.whatsapp_greeting');
         $whatsappLink = $whatsappNumber
-            ? "https://wa.me/{$whatsappNumber}?text=Bonjour,%20je%20vous%20contacte%20via%20AjiKhdam%20pour%20la%20mission:%20{$encodedTitle}"
+            ? "https://wa.me/{$whatsappNumber}?text=" . urlencode($greeting) . "%20{$encodedTitle}"
             : null;
 
         return [
@@ -221,7 +222,7 @@ class ServiceRequestController extends Controller
         }
 
         $requests = Auth::user()->serviceRequests()
-            ->with(['category', 'offers.provider', 'selectedProvider'])
+            ->with(['category.translations', 'offers.provider.translations', 'selectedProvider.translations', 'translations'])
             ->latest()
             ->get();
 
@@ -250,11 +251,13 @@ class ServiceRequestController extends Controller
             // Notify the client/owner
             $client = $serviceRequest->client;
             if ($client) {
-                $client->notify(new MissionCompletedNotification($serviceRequest));
+                $client->notify(new MissionCompletedNotification($serviceRequest, app()->getLocale()));
             }
 
+            $sr = $serviceRequest->fresh();
+            $sr->load('category.translations', 'translations');
             return ApiResponse::success(
-                $serviceRequest->fresh()->toArray(),
+                $sr->toArray(),
                 'Mission marked as completed'
             );
         });
@@ -297,7 +300,7 @@ class ServiceRequestController extends Controller
             ]);
 
             // Notify the user about their account and password
-            $user->notify(new WelcomeGuestNotification($tempPassword));
+            $user->notify(new WelcomeGuestNotification($tempPassword, app()->getLocale()));
         }
 
         // 2. Create Mission — uses canonical fields; boot() will sync legacy ones
@@ -315,7 +318,7 @@ class ServiceRequestController extends Controller
             'status'              => 'open',
         ]);
 
-        $serviceRequest->load('category');
+        $serviceRequest->load('category.translations', 'translations');
 
         // ── Tiered Notification Logic by Category ──────────────────────────
         $providers = User::where('role', 'provider')
@@ -329,17 +332,17 @@ class ServiceRequestController extends Controller
 
         $tier1 = $providers->take(10);
         foreach ($tier1 as $provider) {
-            $provider->notify(new NewServiceRequestNotification($serviceRequest, 'top'));
+            $provider->notify(new NewServiceRequestNotification($serviceRequest, 'top', app()->getLocale()));
         }
 
         $tier1Ids = $tier1->pluck('id')->toArray();
         if ($providers->count() > 10) {
-            NotifyRemainingProviders::dispatch($serviceRequest, $tier1Ids)
+            NotifyRemainingProviders::dispatch($serviceRequest, $tier1Ids, app()->getLocale())
                 ->delay(now()->addMinutes(30));
         }
         // ──────────────────────────────────────────────────────────────────
 
-        return ApiResponse::success($serviceRequest->toArray(), 'Mission postée avec succès !', 201);
+        return ApiResponse::success($serviceRequest->toArray(), __('messages.mission_posted'), 201);
     }
 
     /**

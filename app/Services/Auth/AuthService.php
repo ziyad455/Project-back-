@@ -51,7 +51,15 @@ final class AuthService
             'document_id_card' => $idCardPath,
         ]);
 
-        return $user->refresh();
+        // Force translation generation for new users (the saved event handler may
+        // be unreliable, so we call it explicitly here).
+        try {
+            $user->generateTranslations();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Translation generation failed for new user: ' . $e->getMessage());
+        }
+
+        return $user->fresh()->load('translations');
     }
 
     /**
@@ -86,75 +94,8 @@ final class AuthService
         $parts = preg_split('/\s+/', $fallbackName, 2) ?: ['New'];
 
         $firstName = trim((string) ($data['first_name'] ?? '')) ?: $parts[0];
-        $lastName = trim((string) ($data['last_name'] ?? '')) ?: ($data['role'] === 'client' ? 'Client' : 'Provider');
+        $lastName = trim((string) ($data['last_name'] ?? '')) ?: ($parts[1] ?? ($data['role'] === 'client' ? 'Client' : 'Provider'));
 
         return [$firstName, $lastName];
-    }
-
-    /**
-     * Generate, store hashed, and send a 6-digit OTP code to the user.
-     */
-    public function sendOtp(User $user): string
-    {
-        $otp = sprintf('%06d', random_int(0, 999999));
-
-        \DB::table('email_verifications')->updateOrInsert(
-            ['user_id' => $user->id],
-            [
-                'otp_code' => Hash::make($otp),
-                'expires_at' => now()->addMinutes(10),
-                'attempts' => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
-
-        \Mail::to($user->email)->send(new \App\Mail\OtpVerificationMail($user->first_name, $otp));
-
-        return $otp;
-    }
-
-    /**
-     * Verify the 6-digit OTP code for a user.
-     *
-     * @throws ValidationException
-     */
-    public function verifyOtp(User $user, string $otpCode): bool
-    {
-        $record = \DB::table('email_verifications')->where('user_id', $user->id)->first();
-
-        if (! $record) {
-            throw ValidationException::withMessages([
-                'otp_code' => ['Aucun code de vérification trouvé.'],
-            ]);
-        }
-
-        if (now()->greaterThan(\Illuminate\Support\Carbon::parse($record->expires_at))) {
-            throw ValidationException::withMessages([
-                'otp_code' => ['Le code de vérification a expiré.'],
-            ]);
-        }
-
-        if ($record->attempts >= 5) {
-            throw ValidationException::withMessages([
-                'otp_code' => ['Trop de tentatives infructueuses. Veuillez demander un nouveau code.'],
-            ]);
-        }
-
-        if (! Hash::check($otpCode, $record->otp_code)) {
-            \DB::table('email_verifications')->where('user_id', $user->id)->increment('attempts');
-            throw ValidationException::withMessages([
-                'otp_code' => ['Le code de vérification est incorrect.'],
-            ]);
-        }
-
-        // Verification successful
-        $user->forceFill([
-            'email_verified_at' => now()
-        ])->save();
-
-        \DB::table('email_verifications')->where('user_id', $user->id)->delete();
-
-        return true;
     }
 }

@@ -3,10 +3,42 @@
 namespace Database\Seeders;
 
 use App\Models\ServiceCategory;
+use App\Models\Translation;
 use Illuminate\Database\Seeder;
 
 class ServiceCategorySeeder extends Seeder
 {
+    private const TRANSLATIONS = [
+        'Développement Web' => [
+            'name' => 'تطوير الويب',
+            'description' => 'مواقع إلكترونية، تطبيقات ويب، إلخ.',
+        ],
+        'Design Graphique' => [
+            'name' => 'التصميم الجرافيكي',
+            'description' => 'شعارات، نماذج أولية، وسائل تواصل.',
+        ],
+        'Marketing Digital' => [
+            'name' => 'التسويق الرقمي',
+            'description' => 'تحسين محركات البحث، إعلانات، تواصل اجتماعي.',
+        ],
+        'Rédaction & Traduction' => [
+            'name' => 'التحرير والترجمة',
+            'description' => 'مقالات، تصحيح، ترجمة.',
+        ],
+        'Assistance Administrative' => [
+            'name' => 'المساعدة الإدارية',
+            'description' => 'إدخال بيانات، إدارة البريد الإلكتروني.',
+        ],
+        'Cours de Soutien' => [
+            'name' => 'دروس الدعم',
+            'description' => 'رياضيات، لغات، برمجة.',
+        ],
+        'Réparation d\'ordinateurs' => [
+            'name' => 'إصلاح الحواسيب',
+            'description' => 'صيانة وإصلاح معدات الحاسوب.',
+        ],
+    ];
+
     /**
      * Run the database seeds.
      */
@@ -23,7 +55,22 @@ class ServiceCategorySeeder extends Seeder
         ];
 
         foreach ($categories as $category) {
-            ServiceCategory::updateOrCreate(['name' => $category['name']], $category);
+            $cat = ServiceCategory::updateOrCreate(['name' => $category['name']], $category);
+
+            $ar = self::TRANSLATIONS[$category['name']] ?? null;
+            if ($ar) {
+                foreach (['name', 'description'] as $field) {
+                    Translation::updateOrCreate(
+                        [
+                            'translatable_type' => ServiceCategory::class,
+                            'translatable_id' => $cat->id,
+                            'locale' => 'ar',
+                            'field' => $field,
+                        ],
+                        ['content' => $ar[$field]]
+                    );
+                }
+            }
         }
     }
 }

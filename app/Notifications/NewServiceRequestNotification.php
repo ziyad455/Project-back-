@@ -14,20 +14,15 @@ class NewServiceRequestNotification extends Notification implements ShouldQueue
 
     public function __construct(
         public readonly ServiceRequest $serviceRequest,
-        public readonly string $tier = 'top'  // 'top' for top 10, 'others' for the rest
+        public readonly string $tier = 'top',
+        public readonly string $locale = 'fr'
     ) {}
 
-    /**
-     * Get the notification's delivery channels.
-     */
     public function via(object $notifiable): array
     {
         return ['database', 'mail'];
     }
 
-    /**
-     * Send as email.
-     */
     public function toMail(object $notifiable): MailMessage
     {
         $category  = $this->serviceRequest->category;
@@ -41,25 +36,29 @@ class NewServiceRequestNotification extends Notification implements ShouldQueue
         $city  = $this->serviceRequest->city;
 
         $badge = $this->tier === 'top'
-            ? '⭐ Vous faites partie des meilleurs talents — vous avez été notifié en priorité !'
-            : '📢 Nouvelle mission disponible pour vous.';
+            ? __('messages.email_new_mission_badge_top', [], $this->locale)
+            : __('messages.email_new_mission_badge_others', [], $this->locale);
 
-        return (new MailMessage)
-            ->subject("🚀 AjiKhdam — Nouvelle mission : {$title}")
-            ->greeting("Bonjour {$notifiable->first_name} !")
+        $mail = (new MailMessage)
+            ->subject(__('messages.email_new_mission_subject', ['title' => $title], $this->locale))
+            ->greeting(__('messages.email_greeting', ['name' => $notifiable->first_name], $this->locale))
             ->line($badge)
-            ->line("**{$clientName}** recherche un **{$categoryName}** à **{$city}** pour **{$price} DH**.")
+            ->line(__('messages.email_new_mission_body', [
+                'client' => $clientName,
+                'category' => $categoryName,
+                'city' => $city,
+                'price' => number_format((int)$price, 0, ',', ' '),
+            ], $this->locale))
             ->when($this->serviceRequest->description, fn($mail) =>
-                $mail->line("Description : " . \Str::limit($this->serviceRequest->description, 200))
+                $mail->line(__('messages.email_new_mission_desc', ['desc' => \Str::limit($this->serviceRequest->description, 200)], $this->locale))
             )
-            ->action('Voir la mission sur AjiKhdam', url('/talent/requests'))
-            ->line('Connectez-vous à votre tableau de bord pour envoyer votre offre.')
-            ->salutation('À très bientôt — L\'équipe AjiKhdam 🇲🇦');
+            ->action(__('messages.email_new_mission_action', [], $this->locale), url('/talent/requests'))
+            ->line(__('messages.email_new_mission_footer', [], $this->locale))
+            ->salutation(__('messages.email_salutation', [], $this->locale));
+
+        return $mail;
     }
 
-    /**
-     * Get the array representation of the notification.
-     */
     public function toArray(object $notifiable): array
     {
         $category = $this->serviceRequest->category;
@@ -73,14 +72,13 @@ class NewServiceRequestNotification extends Notification implements ShouldQueue
 
         return [
             'service_request_id' => $this->serviceRequest->id,
-            'title'              => 'Nouvelle mission: ' . $title,
-            'message'            => sprintf(
-                '%s cherche un %s à %s pour %s DH.',
-                $clientName,
-                $category->name ?? 'service',
-                $this->serviceRequest->city,
-                number_format($price, 0, ',', ' ')
-            ),
+            'title'              => __('messages.notif_new_mission_title', ['title' => $title], $this->locale),
+            'message'            => __('messages.notif_new_mission_body', [
+                'client' => $clientName,
+                'category' => $category->name ?? 'service',
+                'city' => $this->serviceRequest->city,
+                'price' => number_format((int)$price, 0, ',', ' '),
+            ], $this->locale),
             'tier'               => $this->tier,
             'city'               => $this->serviceRequest->city,
             'proposed_price'     => $price,
