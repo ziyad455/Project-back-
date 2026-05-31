@@ -23,12 +23,19 @@ class RequestOfferController extends Controller
             return ApiResponse::error('Only talents can view their missions', 403);
         }
 
-        $offers = $user->offers()
+        $offerMissions = $user->offers()
             ->with(['serviceRequest.category.translations', 'serviceRequest.client', 'serviceRequest.translations'])
             ->latest()
+            ->get()
+            ->pluck('serviceRequest');
+
+        $chosenMissions = ServiceRequest::where('selected_provider_id', $user->id)
+            ->with(['category.translations', 'translations'])
             ->get();
 
-        return ApiResponse::success($offers->toArray(), 'My offers retrieved');
+        $allMissions = $offerMissions->concat($chosenMissions)->unique('id')->values();
+
+        return ApiResponse::success($allMissions->toArray(), 'My missions retrieved');
     }
 
     /**

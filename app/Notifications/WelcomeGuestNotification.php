@@ -13,8 +13,10 @@ class WelcomeGuestNotification extends Notification implements ShouldQueue
 
     public function __construct(
         public readonly string $temporaryPassword,
-        public readonly string $locale = 'fr'
-    ) {}
+        string $locale = 'fr'
+    ) {
+        $this->locale = $locale;
+    }
 
     public function via(object $notifiable): array
     {

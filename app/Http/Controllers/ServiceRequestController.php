@@ -126,6 +126,12 @@ class ServiceRequestController extends Controller
     public function show(Request $request, ServiceRequest $serviceRequest)
     {
         $user = $request->user();
+
+        if (! $user) {
+            $serviceRequest->load(['category.translations', 'translations']);
+            return ApiResponse::success($serviceRequest->toArray(), 'Service request retrieved');
+        }
+
         $isOwner = $serviceRequest->client_id !== null && $user->id === $serviceRequest->client_id;
         $isSelectedProvider = $user->id === $serviceRequest->selected_provider_id;
         $hasOwnOffer = $serviceRequest->offers()->where('provider_id', $user->id)->exists();
@@ -148,8 +154,6 @@ class ServiceRequestController extends Controller
         }
 
         $responseData = $serviceRequest->toArray();
-
-
 
         return ApiResponse::success($responseData, 'Service request retrieved');
     }
