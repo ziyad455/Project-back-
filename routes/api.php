@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Auth\AuthController;
+use App\Http\Controllers\MissionCandidateController;
 use App\Http\Controllers\RequestOfferController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ServiceRequestController;
@@ -28,6 +29,9 @@ Route::get('/providers/{id}', [UserController::class, 'show']);
 Route::post('/missions', [ServiceRequestController::class, 'storePublic']);
 Route::get('/providers/{providerId}/reviews', [ReviewController::class, 'index']);
 Route::post('/requests', [ServiceRequestController::class, 'store']);
+Route::get('/requests/{serviceRequest}', [ServiceRequestController::class, 'show']);
+Route::get('/missions/{serviceRequest}/candidates', [MissionCandidateController::class, 'candidates']);
+Route::put('/missions/{serviceRequest}/choose/{talent}', [MissionCandidateController::class, 'choose']);
 
 // ── Protected routes ───────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
@@ -46,7 +50,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Service Requests
     Route::get('/requests', [ServiceRequestController::class, 'index']);
     Route::get('/requests/my', [ServiceRequestController::class, 'myRequests']);
-    Route::get('/requests/{serviceRequest}', [ServiceRequestController::class, 'show']);
     Route::get('/requests/{serviceRequest}/client-contact', [ServiceRequestController::class, 'clientContact']);
     Route::post('/requests/{serviceRequest}/complete', [ServiceRequestController::class, 'complete']);
 
@@ -55,6 +58,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/requests/{serviceRequest}/offers', [RequestOfferController::class, 'store']);
     Route::post('/requests/{serviceRequest}/refuse', [RequestOfferController::class, 'refuse']);
     // Route::post('/offers/{requestOffer}/accept', [RequestOfferController::class, 'accept']); // DEPRECATED — clients no longer accept offers
+
+    // Missions (new talent application flow)
+    Route::post('/missions/{serviceRequest}/apply', [MissionCandidateController::class, 'apply']);
+    Route::delete('/missions/{serviceRequest}/withdraw', [MissionCandidateController::class, 'withdraw']);
 
     // Reviews
     Route::post('/requests/{serviceRequest}/reviews', [ReviewController::class, 'store']);

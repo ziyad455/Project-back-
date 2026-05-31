@@ -16,8 +16,10 @@ class MissionAcceptedNotification extends Notification implements ShouldQueue
     public function __construct(
         public readonly ServiceRequest $serviceRequest,
         public readonly User $talent,
-        public readonly string $locale = 'fr'
-    ) {}
+        string $locale = 'fr'
+    ) {
+        $this->locale = $locale;
+    }
 
     public function via(object $notifiable): array
     {
