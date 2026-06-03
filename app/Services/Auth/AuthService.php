@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
+use App\Mail\OtpVerificationMail;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 final class AuthService
@@ -81,6 +86,62 @@ final class AuthService
     public function issueToken(User $user): string
     {
         return $user->createToken('auth_token')->plainTextToken;
+    }
+
+    /**
+     * Send a time-limited OTP to the given user and persist it to the database.
+     */
+    public function sendOtp(User $user): void
+    {
+        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = Carbon::now()->addMinutes(10);
+
+        try {
+            DB::table('email_verifications')->updateOrInsert(
+                ['user_id' => $user->id],
+                [
+                    'otp_code' => $otp,
+                    'expires_at' => $expiresAt,
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Failed to persist OTP for user ' . $user->id . ': ' . $e->getMessage());
+        }
+
+        try {
+            Mail::to($user->email)->send(new OtpVerificationMail($user->first_name ?? '', $otp));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send OTP email to ' . $user->email . ': ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Verify a previously-sent OTP for the given user.
+     * Throws a ValidationException on failure.
+     */
+    public function verifyOtp(User $user, string $code): void
+    {
+        $record = DB::table('email_verifications')->where('user_id', $user->id)->first();
+
+        if (! $record) {
+            throw ValidationException::withMessages(['otp_code' => ['Le code est invalide ou a expiré.']]);
+        }
+
+        if (Carbon::parse($record->expires_at)->isPast()) {
+            DB::table('email_verifications')->where('user_id', $user->id)->delete();
+            throw ValidationException::withMessages(['otp_code' => ['Le code est invalide ou a expiré.']]);
+        }
+
+        if (! hash_equals((string) $record->otp_code, (string) $code)) {
+            throw ValidationException::withMessages(['otp_code' => ['Le code est invalide ou a expiré.']]);
+        }
+
+        $user->email_verified_at = now();
+        $user->save();
+
+        DB::table('email_verifications')->where('user_id', $user->id)->delete();
     }
 
     /**
