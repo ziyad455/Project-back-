@@ -33,7 +33,7 @@ class DatabaseSeeder extends Seeder
         User::create([
             'first_name'         => 'Admin',
             'last_name'          => 'AjiKhdam',
-            'email'              => 'admin@ajikhdam.com',
+            'email'              => 'tberziad016@gmail.com',
             'password'           => Hash::make('password'),
             'role'               => 'client',
             'is_admin'           => true,
