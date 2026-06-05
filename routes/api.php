@@ -35,6 +35,7 @@ Route::get('/providers/{id}', [UserController::class, 'show']);
 Route::post('/missions', [ServiceRequestController::class, 'storePublic']);
 Route::get('/providers/{providerId}/reviews', [ReviewController::class, 'index']);
 Route::post('/requests', [ServiceRequestController::class, 'store']);
+Route::get('/requests/my', [ServiceRequestController::class, 'myRequests']);
 Route::get('/requests/{serviceRequest}', [ServiceRequestController::class, 'show']);
 Route::get('/missions/{serviceRequest}/candidates', [MissionCandidateController::class, 'candidates']);
 Route::put('/missions/{serviceRequest}/choose/{talent}', [MissionCandidateController::class, 'choose']);
@@ -55,7 +56,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/user/phone', [UserController::class, 'updatePhone']);
     // Service Requests
     Route::get('/requests', [ServiceRequestController::class, 'index']);
-    Route::get('/requests/my', [ServiceRequestController::class, 'myRequests']);
     Route::get('/requests/{serviceRequest}/client-contact', [ServiceRequestController::class, 'clientContact']);
     Route::post('/requests/{serviceRequest}/complete', [ServiceRequestController::class, 'complete']);
 

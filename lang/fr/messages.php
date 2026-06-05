@@ -36,6 +36,7 @@ return [
     'email_welcome_email_label' => '- **Email :** :email',
     'email_welcome_password_label' => '- **Mot de passe temporaire :** :password',
     'email_welcome_action' => 'Se connecter au tableau de bord',
+    'email_welcome_mission_link' => 'Voir ma mission et suivre les candidatures',
     'email_welcome_advice' => 'Nous vous conseillons de modifier votre mot de passe dès votre première connexion.',
     // Emails - MissionCompleted
     'email_completed_subject' => '✅ AjiKhdam — Votre mission est terminée : :title',
@@ -62,4 +63,14 @@ return [
     // Database notification messages - TalentApplied
     'notif_applied_title' => 'Nouvelle candidature pour :title',
     'notif_applied_body' => ':talent a postulé sur votre mission :title',
+    // Emails - TalentChosen
+    'email_chosen_subject' => '🎉 AjiKhdam — Vous avez été choisi pour la mission : :title',
+    'email_chosen_body' => 'Félicitations ! Le client **:client** vous a choisi pour la mission **:title**.',
+    'email_chosen_whatsapp' => 'Contacter le client sur WhatsApp',
+    'email_chosen_footer' => 'Connectez-vous à votre tableau de bord pour voir les détails.',
+    // Database notification messages - TalentChosen
+    'notif_chosen_title' => 'Vous avez été choisi pour :title',
+    'notif_chosen_body' => 'Félicitations ! :client vous a choisi pour la mission :title',
+    'mission' => 'Mission',
+    'client' => 'Client',
 ];

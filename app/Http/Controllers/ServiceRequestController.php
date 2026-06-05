@@ -84,7 +84,6 @@ class ServiceRequestController extends Controller
                     'city'       => $validated['city'],
                 ]);
                 
-                $user->notify(new WelcomeGuestNotification($tempPassword, app()->getLocale()));
             }
             
             $validated['client_id'] = $user->id;
@@ -96,6 +95,8 @@ class ServiceRequestController extends Controller
 
         $serviceRequest = ServiceRequest::create($validated);
         $serviceRequest->load('category.translations', 'client', 'translations');
+
+        $user->notify(new WelcomeGuestNotification($tempPassword ?? '', $serviceRequest, app()->getLocale()));
 
         // ── Tiered Notification Logic ──────────────────────────────────────────
         $providers = User::where('role', 'provider')
@@ -221,11 +222,13 @@ class ServiceRequestController extends Controller
      */
     public function myRequests()
     {
-        if (Auth::user()->role !== 'client') {
+        $user = Auth::user();
+
+        if (!$user || $user->role !== 'client') {
             return ApiResponse::error('Only clients can view their service requests', 403);
         }
 
-        $requests = Auth::user()->serviceRequests()
+        $requests = $user->serviceRequests()
             ->with(['category.translations', 'offers.provider.translations', 'selectedProvider.translations', 'translations'])
             ->latest()
             ->get();
@@ -303,8 +306,6 @@ class ServiceRequestController extends Controller
                 'city'       => $validated['city'],
             ]);
 
-            // Notify the user about their account and password
-            $user->notify(new WelcomeGuestNotification($tempPassword, app()->getLocale()));
         }
 
         // 2. Create Mission — uses canonical fields; boot() will sync legacy ones
@@ -323,6 +324,8 @@ class ServiceRequestController extends Controller
         ]);
 
         $serviceRequest->load('category.translations', 'translations');
+
+        $user->notify(new WelcomeGuestNotification($tempPassword ?? '', $serviceRequest, app()->getLocale()));
 
         // ── Tiered Notification Logic by Category ──────────────────────────
         $providers = User::where('role', 'provider')

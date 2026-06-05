@@ -36,6 +36,7 @@ return [
     'email_welcome_email_label' => '- **البريد الإلكتروني:** :email',
     'email_welcome_password_label' => '- **كلمة المرور المؤقتة:** :password',
     'email_welcome_action' => 'تسجيل الدخول إلى لوحة التحكم',
+    'email_welcome_mission_link' => 'عرض مهمتي ومتابعة المتقدمين',
     'email_welcome_advice' => 'ننصحك بتغيير كلمة المرور عند أول تسجيل دخول.',
     // Emails - MissionCompleted
     'email_completed_subject' => '✅ AjiKhdam — تم إتمام مهمتك : :title',
@@ -62,4 +63,14 @@ return [
     // Database notification messages - TalentApplied
     'notif_applied_title' => 'تقديم جديد لـ :title',
     'notif_applied_body' => ':talent تقدم لمهمتك :title',
+    // Emails - TalentChosen
+    'email_chosen_subject' => '🎉 AjiKhdam — تم اختيارك لمهمة : :title',
+    'email_chosen_body' => 'تهانينا ! لقد اختارك العميل **:client** لمهمتك **:title**.',
+    'email_chosen_whatsapp' => 'تواصل مع العميل على WhatsApp',
+    'email_chosen_footer' => 'سجل الدخول إلى لوحة التحكم الخاصة بك لرؤية التفاصيل.',
+    // Database notification messages - TalentChosen
+    'notif_chosen_title' => 'تم اختيارك لـ :title',
+    'notif_chosen_body' => 'تهانينا ! :client اختارك لمهمة :title',
+    'mission' => 'مهمة',
+    'client' => 'عميل',
 ];

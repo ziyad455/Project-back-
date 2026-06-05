@@ -31,7 +31,7 @@ class TalentAppliedNotification extends Notification implements ShouldQueue
         $title = $this->serviceRequest->title ?? __('messages.mission', [], $this->locale);
         $talentName = trim($this->talent->first_name . ' ' . $this->talent->last_name);
 
-        $missionUrl = url('/client/requests/' . $this->serviceRequest->id);
+        $missionUrl = config('services.frontend.url') . '/client/requests/' . $this->serviceRequest->id;
 
         return (new MailMessage)
             ->subject(__('messages.email_applied_subject', ['title' => $title], $this->locale))
