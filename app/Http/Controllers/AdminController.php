@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ProviderApproved;
+use App\Mail\ProviderRejected;
 use App\Models\User;
 use App\Support\ApiResponse;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
@@ -118,6 +121,11 @@ class AdminController extends Controller
         $provider->is_verified_student = true;
         $provider->save();
 
+        Mail::to($provider->email)->send(new ProviderApproved(
+            firstName: $provider->first_name ?? '',
+            dashboardUrl: config('services.frontend.url') . '/dashboard'
+        ));
+
         return ApiResponse::success(
             $provider->load('translations')->toArray(),
             __('messages.provider_approved')
@@ -147,6 +155,11 @@ class AdminController extends Controller
         $provider->document_id_card = null;
         $provider->document_student_proof = null;
         $provider->save();
+
+        Mail::to($provider->email)->send(new ProviderRejected(
+            firstName: $provider->first_name ?? '',
+            retryUrl: config('services.frontend.url') . '/talent/register'
+        ));
 
         return ApiResponse::success([], __('messages.documents_rejected'));
     }
