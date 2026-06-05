@@ -54,4 +54,12 @@ return [
     'notif_completed_body' => 'Votre mission \':title\' est terminée ! Laissez un avis au talent.',
     'notif_accepted_title' => ':title',
     'notif_accepted_body' => 'Un talent a accepté votre mission : :title',
+    // Emails - TalentApplied
+    'email_applied_subject' => '👤 AjiKhdam — Un talent a postulé sur votre mission : :title',
+    'email_applied_body' => '**:talent** a postulé sur votre mission **:title**.',
+    'email_applied_action' => 'Voir le profil du talent et choisir',
+    'email_applied_footer' => 'Connectez-vous pour voir tous les candidats et choisir le meilleur talent.',
+    // Database notification messages - TalentApplied
+    'notif_applied_title' => 'Nouvelle candidature pour :title',
+    'notif_applied_body' => ':talent a postulé sur votre mission :title',
 ];

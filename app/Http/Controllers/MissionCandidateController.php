@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MissionCandidate;
 use App\Models\ServiceRequest;
 use App\Models\User;
+use App\Notifications\TalentAppliedNotification;
 use App\Notifications\TalentChosenNotification;
 use App\Notifications\TalentNotChosenNotification;
 use App\Support\ApiResponse;
@@ -60,6 +61,12 @@ class MissionCandidateController extends Controller
         ]);
 
         $candidate->load('mission.translations', 'mission.category.translations');
+
+        // Notify the client that a talent applied
+        $client = $serviceRequest->client;
+        if ($client) {
+            $client->notify(new TalentAppliedNotification($serviceRequest, $user, app()->getLocale()));
+        }
 
         return ApiResponse::success($candidate->toArray(), 'Application submitted successfully', 201);
     }

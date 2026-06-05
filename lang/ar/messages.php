@@ -54,4 +54,12 @@ return [
     'notif_completed_body' => 'مهمتك \':title\' اكتملت! اترك تقييما للموهوب.',
     'notif_accepted_title' => ':title',
     'notif_accepted_body' => 'موهوب قبل مهمتك : :title',
+    // Emails - TalentApplied
+    'email_applied_subject' => '👤 AjiKhdam — تقدم موهوب لطلبك : :title',
+    'email_applied_body' => '**:talent** تقدم لمهمتك **:title**.',
+    'email_applied_action' => 'عرض ملف الموهوب واختياره',
+    'email_applied_footer' => 'سجل الدخول لرؤية جميع المتقدمين واختيار أفضل موهوب.',
+    // Database notification messages - TalentApplied
+    'notif_applied_title' => 'تقديم جديد لـ :title',
+    'notif_applied_body' => ':talent تقدم لمهمتك :title',
 ];
